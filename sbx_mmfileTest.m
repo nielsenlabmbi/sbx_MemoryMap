@@ -3,20 +3,24 @@ function sbx_mmfileTest()
 end
 
 function startAcqMemMap()
-    global exptDetail imagingDetail pixelTc exptAborted
+    global imagingDetail pixelTc exptAborted
 
     mmfilepath = 'C:\Users\nielsenlab\Documents\MATLAB\yeti\mmap';
     mmfilename = 'scanbox.mmap';
     % specifying the path is unnecessary
     mmfile = memmapfile([mmfilepath '\' mmfilename],'Writable',true, ...
-    'Format', { 'int16' [1 16] 'header' } , 'Repeat', 1);
+        'Format', { 'int16' [1 16] 'header' } , 'Repeat', 1);
     firstFrameEverFlag = 1;
 
     pixelTc = {};
     trialCount = 0;
     trialFrameCount = 0;
-
-    imagingDetail.imageSize = [512 796];
+    
+    imagingDetail.lines = 512; % ideally one should get these from sbx
+    imagingDetail.pixels = 796;
+    imagingDetail.resfreq = 7930;
+    imagingDetail.imageSize = [imagingDetail.lines imagingDetail.pixels];
+    imagingDetail.tPerFrame = imagingDetail.lines/imagingDetail.resfreq;
     
     baselineFrameCount = 0;
     imagingDetail.maxBaselineFrames = 15;
