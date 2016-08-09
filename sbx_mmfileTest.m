@@ -93,8 +93,11 @@ function startAcqMemMap()
             % disp(['DEBUG: Frames collected for this trial (including baseline frames) = ' num2str(trialFrameCount)]);
         elseif ~ttlState_n && ttlState_nMinus1
             disp(['1 -> 0 (trial ' num2str(trialCount) ' ended)']);
+            % disp('DEBUG: Adding post frame.');
             baselineFrameCount = 0;
-            postFrameCount = 0;
+            postFrameCount = 1;
+            trialFrameCount = trialFrameCount + 1;
+            pixelTc{trialCount}(:,:,trialFrameCount) = double(mmfile.Data.chA); %#ok<*AGROW>
         else
             % disp('1 -> 1 (ongoing trial)');
             trialFrameCount = trialFrameCount + 1;
