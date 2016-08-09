@@ -1,10 +1,30 @@
 function mmapAPIGeneralCall
+    % loading fake data
+    global pixelTc imagingDetail exptDetail
+    exptDetail.animal = 'ftaf8';
+    exptDetail.unit = '000';
+    exptDetail.expt = '000';
+    getPixelTcFromSbx
+    % ==================
+    
     % any preprocessing to be done on inputs should be done here.
+    % need to check for empty frames.
+    global isDffCalculated
+    if sum(squeeze(pixelTc{1}(1,1,:) == 0))
+        disp('Removing empty frames. This may take a minute...');
+        for t=1:length(pixelTc)
+            % hack to fisnd empty frames
+            ind = squeeze(pixelTc{t}(1,1,:) == 0);
+            pixelTc{t} = pixelTc{t}(:,:,~ind);
+        end
+    end
+    isDffCalculated = false;
+    
     % ===================
     
     % load analyzer file
-    global Analyzer exptDetail %#ok<NUSED>
-    load(['Z:\2P\Analyzer\' exptDetail.animal '\' exptDetail.animal '_u' exptDetail.unit '_' exptDetail.expt '.analyzer']);
+    global Analyzer %#ok<NUSED>
+    load(['Z:\2P\Analyzer\' exptDetail.animal '\' exptDetail.animal '_u' exptDetail.unit '_' exptDetail.expt '.analyzer'],'-mat');
     % ===================
     
     % save data?
