@@ -1,8 +1,6 @@
 function plotTuning(mouseLoc,trialResp,plotDetail,trialDetail,imagingDetail,timeWindows,axis_tc,axis_tuning)
-    global pixelTc
-    
     currPixelResp = squeeze(trialResp(mouseLoc(1),mouseLoc(2),:));
-    currPixelTc = cellfun(@(x)squeeze(x(mouseLoc(1),mouseLoc(2),:)),pixelTc,'uniformoutput',false);
+    currPixelTc = getPixTc(mouseLoc,2);
     
     primCond = plotDetail.param1name;
     primCondIdx = find(~cellfun(@isempty,(strfind(trialDetail.domains,primCond))));
@@ -96,3 +94,15 @@ function plotTuning(mouseLoc,trialResp,plotDetail,trialDetail,imagingDetail,time
 	hold(axis_tc,'off')
 end
 
+function tc1 = getPixTc(mouseLoc,neighbours)
+    global pixelTc;
+    [X,Y] = meshgrid(mouseLoc(1)-neighbours:mouseLoc(1)+neighbours,...
+            mouseLoc(2)-neighbours:mouseLoc(2)+neighbours);
+	X = X(:); Y = Y(:);
+    for p=1:length(X)
+        tc(:,p) = cellfun(@(x)squeeze(x(X(p),Y(p),:)),pixelTc,'uniformoutput',false);
+    end
+    for c=1:size(tc,1)
+        tc1{c} = mean(cell2mat(tc(c,:)),2);
+    end
+end
