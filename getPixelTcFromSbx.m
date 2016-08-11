@@ -2,7 +2,7 @@ function success  = getPixelTcFromSbx(maxBaselineFrames,maxPostFrames)
     global pixelTc imagingDetail exptDetail
 
     if ~exist('maxBaselineFrames','var');   maxBaselineFrames = 10; end
-    if ~exist('maxPostFrames','var');       maxPostFrames = 10;     end
+    if ~exist('maxPostFrames','var');       maxPostFrames = 20;     end
     
     sbxPath = ['C:\2pdata\' exptDetail.animal '\' exptDetail.animal '_' exptDetail.unit '_' exptDetail.expt ];
     analyzerPath = ['Z:\2P\Analyzer\' exptDetail.animal '\' exptDetail.animal '_u' exptDetail.unit '_' exptDetail.expt '.analyzer'];

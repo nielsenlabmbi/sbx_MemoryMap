@@ -32,6 +32,7 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     handles.clickToMagnify = true;
     handles.maskmode = false;
     handles.pixelmode = false;
+    handles.plotDetail.showAnatomy = false;
     
     % have the details in handles for easy access
     % note: pixelTc is still global
@@ -55,12 +56,17 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     pixIcon = imread('icons/pix.png'); handles.pixIcon = imresize(pixIcon, [40 40]);
     ctmIcon = imread('icons/ctm.png'); handles.ctmIcon = imresize(ctmIcon, [40 40]);
     mmIcon  = imread('icons/mm.png');  handles.mmIcon  = imresize(mmIcon, [40 40]);
-    twIcon  = imread('icons/tw.png');  handles.twIcon  = imresize(twIcon, [40 40]);
+    anatIcon  = imread('icons/anat.png');  handles.anatIcon  = imresize(anatIcon, [40 40]);
+    
     pixIcon_on = imread('icons/pix_on.png'); handles.pixIcon_on = imresize(pixIcon_on, [40 40]);
     ctmIcon_on = imread('icons/ctm_on.png'); handles.ctmIcon_on = imresize(ctmIcon_on, [40 40]);
     mmIcon_on  = imread('icons/mm_on.png');  handles.mmIcon_on  = imresize(mmIcon_on, [40 40]);
+    anatIcon_on  = imread('icons/anat_on.png');  handles.anatIcon_on  = imresize(anatIcon_on, [40 40]);
+    
+    twIcon  = imread('icons/tw.png');  handles.twIcon  = imresize(twIcon, [40 40]);
     
     set(handles.tbutton_pixelSelect,'CData',handles.pixIcon);
+    set(handles.tbutton_showAnatomy,'CData',handles.anatIcon);
     set(handles.tbutton_clickToMagnify,'CData',handles.ctmIcon_on);
     set(handles.tbutton_maskmode,'CData',handles.mmIcon);
     set(handles.button_adjustTimeWindows,'CData',handles.twIcon);
@@ -132,8 +138,12 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     
     % get mean image
     if ~isempty(handles.pixelTuning)
-        [dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
-        plotImage(dispImage,handles.plotDetail,handles.axis_image);
+        [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
+        plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
+        handles.plotDetail.anatomy = getAnatomy;
+    else
+        handles.plotDetail.param1val = [];
+        handles.plotDetail.anatomy = [];
     end
     
     set(handles.axis_image,'xtick',[],'ytick',[]);
@@ -160,95 +170,21 @@ varargout{1} = handles.output;
 % =========================================================================
 
 function uipushtool_open_ClickedCallback(hObject, ~, handles)
-    global pixelTc exptDetail imagingDetail
+    global exptDetail
     
     % in case of sbx load
     prompt = {'Animal:','Unit:','Experiment:'};
     dlg_title = 'Input';
     num_lines = 1;
-    defaultans = {'ftaf0','000','000'};
+    defaultans = {'ftaf8','000','000'};
     answer = inputdlg(prompt,dlg_title,num_lines,defaultans);
     if isempty(answer); return; end
     
     exptDetail.animal = answer{1};
     exptDetail.unit = answer{2};
     exptDetail.expt = answer{3};
-    if ~getPixelTcFromSbx
-        msgbox('Trials don''t match.','Error','error');
-        return;
-    end
-    % ==================
     
-    % any preprocessing to be done on inputs should be done here.
-    % need to check for empty frames.
-    global isDffCalculated
-    if sum(squeeze(pixelTc{1}(1,1,:) == 0))
-        disp('Removing empty frames. This may take a minute...');
-        for t=1:length(pixelTc)
-            % hack to fisnd empty frames
-            ind = squeeze(pixelTc{t}(1,1,:) == 0);
-            pixelTc{t} = pixelTc{t}(:,:,~ind);
-        end
-    end
-    isDffCalculated = false;
-    % ===================
-    
-    % load analyzer file
-    global Analyzer
-    load(['Z:\2P\Analyzer\' exptDetail.animal '\' exptDetail.animal '_u' exptDetail.unit '_' exptDetail.expt '.analyzer'],'-mat');
-    % ===================
-    
-    handles.analyzer = Analyzer;
-    handles.exptDetail = exptDetail;
-    handles.imagingDetail = imagingDetail;
-    handles.trialDetail = getTrialDetail(handles.analyzer);
-    handles.dataLoaded = true;
-    handles.clickToMagnifyData = [4,0.08];
-    set(handles.pulldown_param1,'String',handles.trialDetail.domains);
-    set(handles.pulldown_param1,'Value',1);
-    set(handles.textbox_moduloValue,'String','180','Enable','off');
-    if strcmp(handles.trialDetail.domains{1},'ori')
-        set(handles.checkbox_circular,'Value',1);
-        handles.plotDetail.param1_circular = true;
-    else
-        set(handles.checkbox_circular,'Value',0);
-        handles.plotDetail.param1_circular = false;
-    end
-    handles.plotDetail.param1name = handles.trialDetail.domains{1};
-    handles.plotDetail.param1_modulo = false;
-    handles.plotDetail.param1_moduloVal = 180;
-    if handles.trialDetail.isMultipleDomain
-        set(handles.pulldown_param2,'String',handles.trialDetail.domains);
-        set(handles.pulldown_param2,'Value',2);
-        set(handles.pulldown_param2Value,'String',unique(handles.trialDetail.domval(:,2)),'value',1);
-        
-        set(handles.radiobutton_mean,'Value',1);
-        set(handles.radiobutton_all,'Value',0);
-        set(handles.radiobutton_value,'Value',0);
-        
-        handles.plotDetail.param2name = handles.trialDetail.domains{2};
-        handles.plotDetail.param2val = handles.trialDetail.domval(1,2);
-        handles.plotDetail.param2mode = 'mean';
-        
-        set(handles.pulldown_param2Value,'enable','off');
-    else
-        set(handles.pulldown_param2,'enable','off');
-        set(handles.pulldown_param2Value,'enable','off');
-        set(handles.radiobutton_mean,'enable','off');
-        set(handles.radiobutton_all,'enable','off');
-        set(handles.radiobutton_value,'enable','off');
-        
-        handles.plotDetail.param2name = [];
-        handles.plotDetail.param2val = [];
-        handles.plotDetail.param2mode = [];
-    end
-    handles.timeWindows = getTimeWindows(handles.imagingDetail);
-    [handles.pixelTuning,handles.trialResp] = getPixelTuning...
-        (handles.trialDetail,handles.timeWindows,handles.imagingDetail.imageSize);
-    [dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
-    plotImage(dispImage,handles.plotDetail,handles.axis_image);
-        
-    
+    handles = loadDataAndRefreshGui(handles);   
     guidata(hObject, handles);
     
 function uipushtool_save_ClickedCallback(~, ~, handles)
@@ -325,8 +261,8 @@ function checkbox_circular_Callback(hObject, ~, handles)
     
     % get mean image
     if ~isempty(handles.pixelTuning)
-        [dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
-        plotImage(dispImage,handles.plotDetail,handles.axis_image);
+        [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
+        plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
     end
     guidata(hObject, handles);
     
@@ -340,8 +276,8 @@ function checkbox_modulo_Callback(hObject, ~, handles)
     
     % get mean image
     if ~isempty(handles.pixelTuning)
-        [dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
-        plotImage(dispImage,handles.plotDetail,handles.axis_image);
+        [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
+        plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
     end
     guidata(hObject, handles);
 
@@ -350,8 +286,8 @@ function textbox_moduloValue_Callback(hObject, ~, handles)
     
     % get mean image
     if ~isempty(handles.pixelTuning)
-        [dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
-        plotImage(dispImage,handles.plotDetail,handles.axis_image);
+        [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
+        plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
     end
     guidata(hObject, handles);
 
@@ -363,8 +299,8 @@ function radiobutton_mean_Callback(hObject, ~, handles)
     
     % get mean image
     if ~isempty(handles.pixelTuning)
-        [dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
-        plotImage(dispImage,handles.plotDetail,handles.axis_image);
+        [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
+        plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
     end
     guidata(hObject, handles);
     
@@ -376,8 +312,8 @@ function radiobutton_all_Callback(hObject, ~, handles)
     
     % get mean image
     if ~isempty(handles.pixelTuning)
-        [dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
-        plotImage(dispImage,handles.plotDetail,handles.axis_image);
+        [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
+        plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
     end
     guidata(hObject, handles);
     
@@ -391,8 +327,8 @@ function radiobutton_value_Callback(hObject, ~, handles)
     end
     % get mean image
     if ~isempty(handles.pixelTuning)
-        [dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
-        plotImage(dispImage,handles.plotDetail,handles.axis_image);
+        [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
+        plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
     end
     guidata(hObject, handles);
 
@@ -402,8 +338,8 @@ function pulldown_param2Value_Callback(hObject, ~, handles)
     
     % get mean image
     if ~isempty(handles.pixelTuning)
-        [dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
-        plotImage(dispImage,handles.plotDetail,handles.axis_image);
+        [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
+        plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
     end
     guidata(hObject, handles);
     
@@ -414,7 +350,22 @@ function pulldown_param2Value_Callback(hObject, ~, handles)
 % =========================================================================
 % ======================== IMAGE AXIS BUTTONS =============================
 % =========================================================================
+
+
+function tbutton_showAnatomy_Callback(hObject, ~, handles)
+    handles.plotDetail.showAnatomy = ~handles.plotDetail.showAnatomy;
+    if handles.plotDetail.showAnatomy
+        set(handles.tbutton_showAnatomy,'CData',handles.anatIcon_on);
+    else
+        set(handles.tbutton_showAnatomy,'CData',handles.anatIcon);
+    end
     
+    if handles.dataLoaded
+        plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
+    end
+    
+    guidata(hObject, handles);
+
 function tbutton_maskmode_Callback(hObject, ~, handles)
     handles.maskmode = ~handles.maskmode;
     if handles.maskmode
@@ -461,7 +412,38 @@ function slider_maskSize_Callback(hObject, ~, handles)
     guidata(hObject, handles);
 
 function button_adjustTimeWindows_Callback(hObject, ~, handles)
-    
+    if handles.dataLoaded
+        prompt = {'Max baseline frames:','Max post stimulus frames:','Response start frame after stimulus onset:','Response stop frame after stimulus offset:'};
+        dlg_title = 'Input';
+        num_lines = 1;
+        defaultans = {num2str(handles.imagingDetail.maxBaselineFrames),...
+            num2str(handles.imagingDetail.maxPostFrames),...
+            num2str(handles.timeWindows.respFrames(1)),...
+            num2str(handles.timeWindows.respFrames(2))};
+        answer = inputdlg(prompt,dlg_title,num_lines,defaultans);
+        if isempty(answer); return; end
+
+        maxBaselineFrames = str2double(answer{1});
+        maxPostFrames = str2double(answer{2});
+        respFrames = [str2double(answer{3}) str2double(answer{4})];
+
+        if respFrames(2) > maxPostFrames
+            msgbox('The number of response frames exceed the maximum requested frames. Please try again.','Frame count inconsistant','error');
+            return;
+        end
+        
+        if respFrames(2) > handles.imagingDetail.maxPostFrames || ...
+            maxBaselineFrames ~= handles.imagingDetail.maxBaselineFrames || ...
+            maxPostFrames ~= handles.imagingDetail.maxPostFrames
+            handles = loadDataAndRefreshGui(handles,maxBaselineFrames,maxPostFrames,respFrames);
+        else
+            handles = updateTimeWindowsAndReplot(handles,respFrames);
+        end
+    else
+        msgbox('Load data before adjusting time windows.','Data not loaded','error');
+    end
+    guidata(hObject, handles);
+
 % =========================================================================
 % ====================== IMAGE AXIS BUTTONS DONE ==========================
 % =========================================================================    
@@ -656,4 +638,103 @@ function slider_maskSize_CreateFcn(hObject, ~, ~)
 
 % =========================================================================
 % ========================= CREATEFNs DONE ================================
+% =========================================================================
+
+% =========================================================================
+% ========================== HELPER FUNCTIONS =============================
+% =========================================================================
+
+function handles = loadDataAndRefreshGui(handles,maxBaselineFrames,maxPostFrames,respFrames)
+    global pixelTc imagingDetail exptDetail
+
+    if ~exist('maxBaselineFrames','var');   maxBaselineFrames = 10; end
+    if ~exist('maxPostFrames','var');       maxPostFrames = 20;     end
+    if ~exist('respFrames','var');          respFrames = [1 8];     end
+
+    if ~getPixelTcFromSbx(maxBaselineFrames,maxPostFrames)
+        msgbox('Trials don''t match.','Error','error');
+        return;
+    end
+    % ==================
+    
+    % any preprocessing to be done on inputs should be done here.
+    % need to check for empty frames.
+    global isDffCalculated
+    if sum(squeeze(pixelTc{1}(1,1,:) == 0))
+        disp('Removing empty frames. This may take a minute...');
+        for t=1:length(pixelTc)
+            % hack to fisnd empty frames
+            ind = squeeze(pixelTc{t}(1,1,:) == 0);
+            pixelTc{t} = pixelTc{t}(:,:,~ind);
+        end
+    end
+    isDffCalculated = false;
+    % ===================
+    
+    % load analyzer file
+    global Analyzer
+    load(['Z:\2P\Analyzer\' exptDetail.animal '\' exptDetail.animal '_u' exptDetail.unit '_' exptDetail.expt '.analyzer'],'-mat');
+    % ===================
+    
+    handles.analyzer = Analyzer;
+    handles.exptDetail = exptDetail;
+    handles.imagingDetail = imagingDetail;
+    handles.trialDetail = getTrialDetail(handles.analyzer);
+    handles.dataLoaded = true;
+    handles.clickToMagnifyData = [4,0.08];
+    set(handles.pulldown_param1,'String',handles.trialDetail.domains);
+    set(handles.pulldown_param1,'Value',1);
+    set(handles.textbox_moduloValue,'String','180','Enable','off');
+    if strcmp(handles.trialDetail.domains{1},'ori')
+        set(handles.checkbox_circular,'Value',1);
+        handles.plotDetail.param1_circular = true;
+    else
+        set(handles.checkbox_circular,'Value',0);
+        handles.plotDetail.param1_circular = false;
+    end
+    handles.plotDetail.param1name = handles.trialDetail.domains{1};
+    handles.plotDetail.param1_modulo = false;
+    handles.plotDetail.param1_moduloVal = 180;
+    if handles.trialDetail.isMultipleDomain
+        set(handles.pulldown_param2,'String',handles.trialDetail.domains);
+        set(handles.pulldown_param2,'Value',2);
+        set(handles.pulldown_param2Value,'String',unique(handles.trialDetail.domval(:,2)),'value',1);
+        
+        set(handles.radiobutton_mean,'Value',1);
+        set(handles.radiobutton_all,'Value',0);
+        set(handles.radiobutton_value,'Value',0);
+        
+        handles.plotDetail.param2name = handles.trialDetail.domains{2};
+        handles.plotDetail.param2val = handles.trialDetail.domval(1,2);
+        handles.plotDetail.param2mode = 'mean';
+        
+        set(handles.pulldown_param2Value,'enable','off');
+        
+        set(handles.pulldown_param2,'enable','on');
+        set(handles.radiobutton_mean,'enable','on');
+        set(handles.radiobutton_all,'enable','on');
+        set(handles.radiobutton_value,'enable','on');
+    else
+        set(handles.pulldown_param2,'enable','off');
+        set(handles.pulldown_param2Value,'enable','off');
+        set(handles.radiobutton_mean,'enable','off');
+        set(handles.radiobutton_all,'enable','off');
+        set(handles.radiobutton_value,'enable','off');
+        
+        handles.plotDetail.param2name = [];
+        handles.plotDetail.param2val = [];
+        handles.plotDetail.param2mode = [];
+    end
+    handles = updateTimeWindowsAndReplot(handles,respFrames);
+
+function handles = updateTimeWindowsAndReplot(handles,respFrames)
+    handles.timeWindows = getTimeWindows(handles.imagingDetail,respFrames);
+    [handles.pixelTuning,handles.trialResp] = getPixelTuning...
+        (handles.trialDetail,handles.timeWindows,handles.imagingDetail.imageSize);
+    handles.plotDetail.anatomy = getAnatomy;
+    [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
+    plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
+    
+% =========================================================================
+% ======================= HELPER FUNCTIONS DONE ===========================
 % =========================================================================

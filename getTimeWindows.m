@@ -1,4 +1,4 @@
-function timeWindows = getTimeWindows(imagingDetail)
+function timeWindows = getTimeWindows(imagingDetail,respFrames)
 % because we don't know for how many frames teh stim was on, the format of
 % time windows is a bit idiosyncratic
 % baselineFrames = number of frames in 0 -> stim on
@@ -7,6 +7,7 @@ function timeWindows = getTimeWindows(imagingDetail)
 %               after stim goes off
 % respRange = time window of respFrames
 
+    if ~exist('respFrames','var'); respFrames = [1 8]; end
 
     timeWindows.baselineFrames = imagingDetail.maxBaselineFrames;
     timeWindows.baselineRange = ...
@@ -16,6 +17,6 @@ function timeWindows = getTimeWindows(imagingDetail)
     timeWindows.postRange = ...
         [0 imagingDetail.tPerFrame * imagingDetail.maxPostFrames*1000];
     
-    timeWindows.respFrames = [1 1];
+    timeWindows.respFrames = respFrames;
     timeWindows.respRange = 1000*imagingDetail.tPerFrame*timeWindows.respFrames;
 end

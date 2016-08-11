@@ -16,7 +16,7 @@ function [pixelTuning,trialResp] = getPixelTuning(trialDetail,timeWindows,frameS
         end
         waitbar(t/trialDetail.nTrial,hWaitbar,['Trial number ' num2str(t)])
         
-        trialResp(:,:,t) = mean(pixelTc{t}(:,:,timeWindows.baselineFrames + timeWindows.respFrames(1) : ...
+        trialResp(:,:,t) = mean(pixelTc{t}(:,:,timeWindows.baselineFrames + timeWindows.respFrames(1) + 1 : ...
             size(pixelTc{t},3) - timeWindows.postFrames + timeWindows.respFrames(2)),3);
     end
     delete(hWaitbar);
