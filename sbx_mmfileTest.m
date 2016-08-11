@@ -23,11 +23,11 @@ function startAcqMemMap()
     imagingDetail.tPerFrame = imagingDetail.lines/imagingDetail.resfreq;
     
     baselineFrameCount = 0;
-    imagingDetail.maxBaselineFrames = 15;
+    imagingDetail.maxBaselineFrames = 10;
     baselineFrames = nan(imagingDetail.imageSize(1),imagingDetail.imageSize(2),imagingDetail.maxBaselineFrames);
 
     postFrameCount = 0;
-    imagingDetail.maxPostFrames = 5;
+    imagingDetail.maxPostFrames = 10;
 
     imagingDetail.projectedStimFrames = 20;
     maxTotalFramesPerTrial = imagingDetail.maxBaselineFrames + imagingDetail.projectedStimFrames + imagingDetail.maxPostFrames;
@@ -130,7 +130,6 @@ function udpserver_open
 
     fopen(udp_server);
 end
-
 
 function udpserver_close
 
