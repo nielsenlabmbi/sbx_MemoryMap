@@ -1,6 +1,6 @@
-function plotTuning(mouseLoc,trialResp,plotDetail,trialDetail,imagingDetail,timeWindows,axis_tc,axis_tuning)
-    currPixelResp = squeeze(trialResp(mouseLoc(1),mouseLoc(2),:));
-    currPixelTc = getPixTc(mouseLoc,2);
+function plotTuning(selectedPixel,trialResp,plotDetail,trialDetail,imagingDetail,timeWindows,axis_tc,axis_tuning)
+    currPixelResp = squeeze(trialResp(selectedPixel(1),selectedPixel(2),:));
+    currPixelTc = getPixTc(selectedPixel,2);
     
     primCond = plotDetail.param1name;
     primCondIdx = find(~cellfun(@isempty,(strfind(trialDetail.domains,primCond))));
@@ -18,23 +18,23 @@ function plotTuning(mouseLoc,trialResp,plotDetail,trialDetail,imagingDetail,time
         if ~trialDetail.isMultipleDomain
             domValIdx = find(domval(:,primCondIdx) == primCondVal(v));
             for dvi=1:length(domValIdx)
-                pickTrials{v} = [pickTrials{v};find(trialDetail.trials(:,primCondIdx) == domValIdx(dvi))];
+                pickTrials{v} = [pickTrials{v};find(trialDetail.trials == domValIdx(dvi))];
             end
         elseif strcmp(plotDetail.param2mode,'mean')
             domValIdx = find(domval(:,primCondIdx) == primCondVal(v));
             for dvi=1:length(domValIdx)
-                pickTrials{v} = [pickTrials{v};find(trialDetail.trials(:,primCondIdx) == domValIdx(dvi))];
+                pickTrials{v} = [pickTrials{v};find(trialDetail.trials == domValIdx(dvi))];
             end
         elseif strcmp(plotDetail.param2mode,'all')
             domValIdx = find(domval(:,primCondIdx) == primCondVal(v));
             for dvi=1:length(domValIdx)
-                pickTrials{v} = [pickTrials{v};find(trialDetail.trials(:,primCondIdx) == domValIdx(dvi))];
+                pickTrials{v} = [pickTrials{v};find(trialDetail.trials == domValIdx(dvi))];
             end
         else
             secCondIdx = 3 - primCondIdx;
             domValIdx = find(domval(:,primCondIdx) == primCondVal(v) & domval(:,secCondIdx) == plotDetail.param2val);
             for dvi=1:length(domValIdx)
-                pickTrials{v} = [pickTrials{v};find(trialDetail.trials(:,primCondIdx) == domValIdx(dvi))];
+                pickTrials{v} = [pickTrials{v};find(trialDetail.trials == domValIdx(dvi))]; % (:,primCondIdx)
             end
         end    
     end    
@@ -64,7 +64,7 @@ function plotTuning(mouseLoc,trialResp,plotDetail,trialDetail,imagingDetail,time
                     'tickdir','out');
 	
 	box(axis_tuning,'off');
-    xlabel(axis_tuning,primCond);
+    xlabel(axis_tuning,primCond,'interpreter','none');
     
     cla(axis_tc);
     hold(axis_tc,'on');
@@ -88,16 +88,16 @@ function plotTuning(mouseLoc,trialResp,plotDetail,trialDetail,imagingDetail,time
     set(axis_tc,'xlim',[timeWindows.baselineRange(1) imagingDetail.tPerFrame*maxFrames-timeWindows.baselineRange(1)],...
                 'tickdir','out',...
                 'linewidth',2);
-    xlabel(axis_tc,'Time (ms)');
-    ylabel(axis_tc,'df/f');
+    xlabel(axis_tc,'Time (ms)','interpreter','none');
+    ylabel(axis_tc,'df/f','interpreter','none');
     
 	hold(axis_tc,'off')
 end
 
-function tc1 = getPixTc(mouseLoc,neighbours)
+function tc1 = getPixTc(selectedPixel,neighbours)
     global pixelTc;
-    [X,Y] = meshgrid(mouseLoc(1)-neighbours:mouseLoc(1)+neighbours,...
-            mouseLoc(2)-neighbours:mouseLoc(2)+neighbours);
+    [X,Y] = meshgrid(selectedPixel(1)-neighbours:selectedPixel(1)+neighbours,...
+            selectedPixel(2)-neighbours:selectedPixel(2)+neighbours);
 	X = X(:); Y = Y(:);
     for p=1:length(X)
         tc(:,p) = cellfun(@(x)squeeze(x(X(p),Y(p),:)),pixelTc,'uniformoutput',false);
