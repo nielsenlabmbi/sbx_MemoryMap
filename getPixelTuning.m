@@ -4,10 +4,8 @@ function [pixelTuning,trialResp] = getPixelTuning(trialDetail,timeWindows,frameS
     trialResp = zeros(frameSize(1),frameSize(2),trialDetail.nTrial);
     pixelTuning = zeros(frameSize(1),frameSize(2),size(trialDetail.domval,1)+1);
     
-    disp('Getting pixel tuning. This may take a while...');
-    tic;
+    hWaitbar = waitbar(0,'1','Name','Getting pixel tuning..');
     for t=1:trialDetail.nTrial
-        disp(['Trial ' num2str(t)]);
         if ~isDffCalculated
             % calculate mean of baseline frames
             f0 = mean(pixelTc{t}(:,:,1:timeWindows.baselineFrames),3);
@@ -16,14 +14,14 @@ function [pixelTuning,trialResp] = getPixelTuning(trialDetail,timeWindows,frameS
             % convert pixelTc to df/f
             pixelTc{t} = (pixelTc{t} - f0)./f0;
         end
+        waitbar(t/trialDetail.nTrial,hWaitbar,['Trial number ' num2str(t)])
         
         trialResp(:,:,t) = mean(pixelTc{t}(:,:,timeWindows.baselineFrames + timeWindows.respFrames(1) : ...
             size(pixelTc{t},3) - timeWindows.postFrames + timeWindows.respFrames(2)),3);
     end
-    toc
+    delete(hWaitbar);
     
     isDffCalculated = true;
-    
     for d=1:size(trialDetail.domval,1)+1
         pixelTuning(:,:,d) = mean(squeeze(trialResp(:,:,trialDetail.trials == d)),3);
     end
