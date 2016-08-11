@@ -1,4 +1,4 @@
-function plotImage(dispImage,plotDetail,h)
+function plotImage(dispImage,plotDetail,hImage)
     [maxResp,maxCond] = max(dispImage,[],3);
     minResp = min(dispImage,[],3);
 
@@ -24,19 +24,33 @@ function plotImage(dispImage,plotDetail,h)
         ytlabel = plotDetail.param1val;
     end
 
-    image(maxCondImg,'CDataMapping','direct','AlphaData',mag,'AlphaDataMapping','none','parent',h);
-    axis(h,'image');
+    cla(hImage);
+    if plotDetail.showAnatomy
+        if plotDetail.param1_circular; cid = jet; else cid = hsv; end
+        imout = repmat(mag(:),1,3).*cid(maxCondImg(:),:);
+        imout1(:,:,1) = reshape(imout(:,1),size(mag));
+        imout1(:,:,2) = reshape(imout(:,2),size(mag));
+        imout1(:,:,3) = reshape(imout(:,3),size(mag));
+        imout = imout1 + repmat(plotDetail.anatomy,[1 1 3]);
+        imout = imout/max(imout(:));
+        image(imout,'CDataMapping','direct','AlphaDataMapping','none');
+    else
+        image(maxCondImg,'CDataMapping','direct','AlphaData',mag,'AlphaDataMapping','none','parent',hImage);
+    end
+    
+    axis(hImage,'image');
+    
     if plotDetail.param1_circular
         colormap('hsv');
     else
         colormap('jet');
     end
-    cbar=colorbar('peer',h);
+    cbar = colorbar('peer',hImage);
     yt=linspace(1,64,nColors);
     set(cbar,'YTick',yt,'YTicklabel',ytlabel)
     set(cbar,'YTick',yt,'YTicklabel',ytlabel)
     
-    set(h,'xtick',[],'ytick',[]);
-    box(h,'on');
+    set(hImage,'xtick',[],'ytick',[]);
+    box(hImage,'on');
 end
 
