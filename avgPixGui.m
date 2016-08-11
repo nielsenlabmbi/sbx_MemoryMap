@@ -84,7 +84,7 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
         handles.plotDetail.param1_circular = false;
     end
     
-    handles.plotDetail.filterPx = 3;
+    handles.plotDetail.filterPx = 2;
     
     handles.plotDetail.param1name = handles.trialDetail.domains{1};
     handles.plotDetail.param1_modulo = false;
@@ -488,13 +488,15 @@ function figure1_WindowButtonDownFcn(hObject, ~, handles)
         end
     end
     mouseLoc = get(handles.axis_tuning,'currentpoint');
-    if isfield(handles.plotDetail,'param1val') && ...
-        mouseLoc(1,1) < max(handles.plotDetail.param1val) && ...
-        mouseLoc(1,1) > min(handles.plotDetail.param1val) && ...
-        mouseLoc(1,2) < max(get(handles.axis_tuning,'ylim')) && ...
-        mouseLoc(1,2) > min(get(handles.axis_tuning,'ylim'))
-        [~,selectedCondInd] = min(abs(handles.plotDetail.param1val - mouseLoc(1)));
-        plotTimecoursePerCondition(handles.selectedPixel,selectedCondInd,handles.plotDetail,handles.trialDetail,handles.imagingDetail,handles.timeWindows,handles.axis_tc);
+    if handles.dataLoaded
+        if isfield(handles.plotDetail,'param1val') && ...
+            mouseLoc(1,1) < max(handles.plotDetail.param1val) && ...
+            mouseLoc(1,1) > min(handles.plotDetail.param1val) && ...
+            mouseLoc(1,2) < max(get(handles.axis_tuning,'ylim')) && ...
+            mouseLoc(1,2) > min(get(handles.axis_tuning,'ylim'))
+            [~,selectedCondInd] = min(abs(handles.plotDetail.param1val - mouseLoc(1)));
+            plotTimecoursePerCondition(handles.selectedPixel,selectedCondInd,handles.plotDetail,handles.trialDetail,handles.imagingDetail,handles.timeWindows,handles.axis_tc);
+        end
     end
     guidata(hObject, handles);
 
