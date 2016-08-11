@@ -51,6 +51,20 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     end
     
     % gui changes
+    % button icons
+    pixIcon = imread('icons/pix.png'); handles.pixIcon = imresize(pixIcon, [40 40]);
+    ctmIcon = imread('icons/ctm.png'); handles.ctmIcon = imresize(ctmIcon, [40 40]);
+    mmIcon  = imread('icons/mm.png');  handles.mmIcon  = imresize(mmIcon, [40 40]);
+    twIcon  = imread('icons/tw.png');  handles.twIcon  = imresize(twIcon, [40 40]);
+    pixIcon_on = imread('icons/pix_on.png'); handles.pixIcon_on = imresize(pixIcon_on, [40 40]);
+    ctmIcon_on = imread('icons/ctm_on.png'); handles.ctmIcon_on = imresize(ctmIcon_on, [40 40]);
+    mmIcon_on  = imread('icons/mm_on.png');  handles.mmIcon_on  = imresize(mmIcon_on, [40 40]);
+    
+    set(handles.tbutton_pixelSelect,'CData',handles.pixIcon);
+    set(handles.tbutton_clickToMagnify,'CData',handles.ctmIcon_on);
+    set(handles.tbutton_maskmode,'CData',handles.mmIcon);
+    set(handles.button_adjustTimeWindows,'CData',handles.twIcon);
+    
     handles.clickToMagnifyData = [4,0.08];
     handles.buttonDownOnAxis = false;
     set(handles.pulldown_param1,'String',handles.trialDetail.domains);
@@ -145,22 +159,144 @@ varargout{1} = handles.output;
 % ========================== TOOLBAR CALLBACKS ============================
 % =========================================================================
 
-function uipushtool_open_ClickedCallback(hObject, eventdata, handles)
-% hObject    handle to uipushtool_open (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
+function uipushtool_open_ClickedCallback(hObject, ~, handles)
+    global pixelTc exptDetail imagingDetail
+    
+    % in case of sbx load
+    prompt = {'Animal:','Unit:','Experiment:'};
+    dlg_title = 'Input';
+    num_lines = 1;
+    defaultans = {'ftaf0','000','000'};
+    answer = inputdlg(prompt,dlg_title,num_lines,defaultans);
+    if isempty(answer); return; end
+    
+    exptDetail.animal = answer{1};
+    exptDetail.unit = answer{2};
+    exptDetail.expt = answer{3};
+    if ~getPixelTcFromSbx
+        msgbox('Trials don''t match.','Error','error');
+        return;
+    end
+    % ==================
+    
+    % any preprocessing to be done on inputs should be done here.
+    % need to check for empty frames.
+    global isDffCalculated
+    if sum(squeeze(pixelTc{1}(1,1,:) == 0))
+        disp('Removing empty frames. This may take a minute...');
+        for t=1:length(pixelTc)
+            % hack to fisnd empty frames
+            ind = squeeze(pixelTc{t}(1,1,:) == 0);
+            pixelTc{t} = pixelTc{t}(:,:,~ind);
+        end
+    end
+    isDffCalculated = false;
+    % ===================
+    
+    % load analyzer file
+    global Analyzer
+    load(['Z:\2P\Analyzer\' exptDetail.animal '\' exptDetail.animal '_u' exptDetail.unit '_' exptDetail.expt '.analyzer'],'-mat');
+    % ===================
+    
+    handles.analyzer = Analyzer;
+    handles.exptDetail = exptDetail;
+    handles.imagingDetail = imagingDetail;
+    handles.trialDetail = getTrialDetail(handles.analyzer);
+    handles.dataLoaded = true;
+    handles.clickToMagnifyData = [4,0.08];
+    set(handles.pulldown_param1,'String',handles.trialDetail.domains);
+    set(handles.pulldown_param1,'Value',1);
+    set(handles.textbox_moduloValue,'String','180','Enable','off');
+    if strcmp(handles.trialDetail.domains{1},'ori')
+        set(handles.checkbox_circular,'Value',1);
+        handles.plotDetail.param1_circular = true;
+    else
+        set(handles.checkbox_circular,'Value',0);
+        handles.plotDetail.param1_circular = false;
+    end
+    handles.plotDetail.param1name = handles.trialDetail.domains{1};
+    handles.plotDetail.param1_modulo = false;
+    handles.plotDetail.param1_moduloVal = 180;
+    if handles.trialDetail.isMultipleDomain
+        set(handles.pulldown_param2,'String',handles.trialDetail.domains);
+        set(handles.pulldown_param2,'Value',2);
+        set(handles.pulldown_param2Value,'String',unique(handles.trialDetail.domval(:,2)),'value',1);
+        
+        set(handles.radiobutton_mean,'Value',1);
+        set(handles.radiobutton_all,'Value',0);
+        set(handles.radiobutton_value,'Value',0);
+        
+        handles.plotDetail.param2name = handles.trialDetail.domains{2};
+        handles.plotDetail.param2val = handles.trialDetail.domval(1,2);
+        handles.plotDetail.param2mode = 'mean';
+        
+        set(handles.pulldown_param2Value,'enable','off');
+    else
+        set(handles.pulldown_param2,'enable','off');
+        set(handles.pulldown_param2Value,'enable','off');
+        set(handles.radiobutton_mean,'enable','off');
+        set(handles.radiobutton_all,'enable','off');
+        set(handles.radiobutton_value,'enable','off');
+        
+        handles.plotDetail.param2name = [];
+        handles.plotDetail.param2val = [];
+        handles.plotDetail.param2mode = [];
+    end
+    handles.timeWindows = getTimeWindows(handles.imagingDetail);
+    [handles.pixelTuning,handles.trialResp] = getPixelTuning...
+        (handles.trialDetail,handles.timeWindows,handles.imagingDetail.imageSize);
+    [dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
+    plotImage(dispImage,handles.plotDetail,handles.axis_image);
+        
+    
+    guidata(hObject, handles);
+    
+function uipushtool_save_ClickedCallback(~, ~, handles)
+    global pixelTc;
+    if ~handles.dataLoaded
+        msgbox('No data loaded.','Nothing to save','error');
+    else
+        savePathC = ['C:\2pdata\' handles.exptDetail.animal '\' ...
+            handles.exptDetail.animal '_' handles.exptDetail.unit '_' ...
+            handles.exptDetail.expt '_pixelData.mat'];
+        savePathZ = ['Z:\2P\Ferret 2P\Ferret 2P data\' handles.exptDetail.animal '\' ...
+            handles.exptDetail.animal '_' handles.exptDetail.unit '_' ...
+            handles.exptDetail.expt '_pixelData.mat'];
+        
+        choice = questdlg(['Do you want to save pixel timecourse data?'...
+            '(Warning: This will take minutes.'...
+            'Click ''No'' to only save pixel tuning data.)'], ...
+            'Save data', ...
+            'Yes','No','No');
+        if strcmp(choice,'Yes')
+            saveData.pixelTc = pixelTc;
+        end
+        saveData.pixelTuning = handles.pixelTuning;
+        saveData.trialResp = handles.trialResp;
+        saveData.analyzer = handles.analyzer;
+        saveData.trialDetail = handles.trialDetail;
+        saveData.plotDetail = handles.plotDetail;
+        saveData.exptDetail = handles.exptDetail;
+        saveData.imagingDetail = handles.imagingDetail;
+        saveData.mask = handles.mask;
+        saveData.timeWindows = handles.timeWindows;
+        saveData.clickToMagnifyData = handles.clickToMagnifyData; %#ok<STRNU>
+        
+        if ~exist(['C:\2pdata\' handles.exptDetail.animal],'dir'); mkdir(['C:\2pdata\' handles.exptDetail.animal]); end
+        if ~exist(['Z:\2P\Ferret 2P\Ferret 2P data\' handles.exptDetail.animal],'dir'); mkdir(['Z:\2P\Ferret 2P\Ferret 2P data\' handles.exptDetail.animal]); end
+        h = msgbox('Saving data...','Save Data','none');
+        save(savePathC,'saveData','-v7.3');
+        save(savePathZ,'saveData','-v7.3');
+        delete(h);
+        msgbox('Data saved.','Save Data','none');
+    end
 
-function uipushtool_save_ClickedCallback(hObject, eventdata, handles)
-% hObject    handle to uipushtool_save (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-function uitoggletool_zoomIn_ClickedCallback(hObject, eventdata, handles)
+function uitoggletool_zoomIn_ClickedCallback(hObject, ~, handles)
 % hObject    handle to uitoggletool_zoomIn (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
-function uitoggletool_zoomOut_ClickedCallback(hObject, eventdata, handles)
+function uitoggletool_zoomOut_ClickedCallback(hObject, ~, handles)
 % hObject    handle to uitoggletool_zoomOut (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -286,6 +422,9 @@ function tbutton_maskmode_Callback(hObject, ~, handles)
         handles.clickToMagnify = 0;
         handles.pixelmode = 0;
 %         showMask;
+        set(handles.tbutton_pixelSelect,'CData',handles.pixIcon);
+        set(handles.tbutton_clickToMagnify,'CData',handles.ctmIcon);
+        set(handles.tbutton_maskmode,'CData',handles.mmIcon_on);
     else
         set(handles.slider_maskSize,'enable','off');
 %         hideMask;
@@ -298,6 +437,9 @@ function tbutton_clickToMagnify_Callback(hObject, ~, handles)
         set(handles.slider_maskSize,'enable','off');
         handles.maskmode = 0;
         handles.pixelmode = 0;
+        set(handles.tbutton_pixelSelect,'CData',handles.pixIcon);
+        set(handles.tbutton_clickToMagnify,'CData',handles.ctmIcon_on);
+        set(handles.tbutton_maskmode,'CData',handles.mmIcon);
     end
     guidata(hObject, handles);
 
@@ -307,6 +449,9 @@ function tbutton_pixelSelect_Callback(hObject, ~, handles)
         set(handles.slider_maskSize,'enable','off');
         handles.maskmode = 0;
         handles.clickToMagnify = 0;
+        set(handles.tbutton_pixelSelect,'CData',handles.pixIcon_on);
+        set(handles.tbutton_clickToMagnify,'CData',handles.ctmIcon);
+        set(handles.tbutton_maskmode,'CData',handles.mmIcon);
     end
     guidata(hObject, handles);
     
@@ -333,6 +478,7 @@ function figure1_WindowButtonDownFcn(hObject, ~, handles)
        mouseLoc(1) > 0 && ...
        mouseLoc(2) > 0
         handles.buttonDownOnAxis = true;
+        handles.selectedPixel = mouseLoc;
         if handles.clickToMagnify
             f1 = hObject;
             a1 = handles.axis_image;
@@ -359,6 +505,15 @@ function figure1_WindowButtonDownFcn(hObject, ~, handles)
                 handles.axis_tc,handles.axis_tuning)
         end
     end
+    mouseLoc = get(handles.axis_tuning,'currentpoint');
+    if isfield(handles.plotDetail,'param1val') && ...
+        mouseLoc(1,1) < max(handles.plotDetail.param1val) && ...
+        mouseLoc(1,1) > min(handles.plotDetail.param1val) && ...
+        mouseLoc(1,2) < max(get(handles.axis_tuning,'ylim')) && ...
+        mouseLoc(1,2) > min(get(handles.axis_tuning,'ylim'))
+        [~,selectedCondInd] = min(abs(handles.plotDetail.param1val - mouseLoc(1)));
+        plotTimecoursePerCondition(handles.selectedPixel,selectedCondInd,handles.plotDetail,handles.trialDetail,handles.imagingDetail,handles.timeWindows,handles.axis_tc);
+    end
     guidata(hObject, handles);
 
 function figure1_WindowButtonMotionFcn(hObject, ~, handles)
@@ -368,6 +523,7 @@ function figure1_WindowButtonMotionFcn(hObject, ~, handles)
        mouseLoc(2) < handles.imagingDetail.imageSize(2) && ...
        mouseLoc(1) > 0 && ...
        mouseLoc(2) > 0
+        if handles.buttonDownOnAxis; handles.selectedPixel = mouseLoc; end
         if handles.clickToMagnify
             H = get(hObject,'UserData');
             if ~isempty(H)
@@ -399,6 +555,7 @@ function figure1_WindowButtonUpFcn(hObject, ~, handles)
        mouseLoc(2) < handles.imagingDetail.imageSize(2) && ...
        mouseLoc(1) > 0 && ...
        mouseLoc(2) > 0
+        handles.selectedPixel = mouseLoc;
         handles.buttonDownOnAxis = false;
         if handles.clickToMagnify
             H = get(hObject,'UserData');
