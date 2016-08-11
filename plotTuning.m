@@ -85,9 +85,24 @@ function plotTuning(selectedPixel,trialResp,plotDetail,trialDetail,imagingDetail
         plot(axis_tc,t,wrstTc{ii},'m','linewidth',1);
     end
     maxFrames = max([nFrameBest nFrameWrst]);
-    set(axis_tc,'xlim',[timeWindows.baselineRange(1) imagingDetail.tPerFrame*maxFrames-timeWindows.baselineRange(1)],...
+    stimOffTime = imagingDetail.tPerFrame*maxFrames*1000 + timeWindows.baselineRange(1) - timeWindows.postRange(2);
+    stimOnTime = 0;
+    respOnTime = stimOnTime + timeWindows.respRange(1);
+    respOffTime = stimOffTime + timeWindows.respRange(2);
+    plotYlims = get(axis_tc,'ylim');
+    line([stimOnTime stimOnTime],plotYlims,'linewidth',2,'parent',axis_tc)
+    line([stimOffTime stimOffTime],plotYlims,'linewidth',2,'parent',axis_tc)
+    fill([respOnTime respOnTime respOffTime respOffTime],[plotYlims(1) plotYlims(2) plotYlims(2) plotYlims(1)],[0.7 0.7 0.7],'parent',axis_tc,'facealpha',0.3,'linestyle','none');
+    
+    set(axis_tc,'xlim',[timeWindows.baselineRange(1) (imagingDetail.tPerFrame*maxFrames)*1000+timeWindows.baselineRange(1)],...
                 'tickdir','out',...
-                'linewidth',2);
+                'linewidth',2,...
+                'ylim',plotYlims);
+    
+    % scale bar for 10 frames
+    plotXlims = get(axis_tc,'xlim');
+    line([plotXlims(2)-(sum(plotXlims)/7)-imagingDetail.tPerFrame*10*1000 plotXlims(2)-(sum(plotXlims)/7)],[plotYlims(2)-(sum(plotYlims)/7) plotYlims(2)-(sum(plotYlims)/7)],'linewidth',5,'parent',axis_tc);
+    
     xlabel(axis_tc,'Time (ms)','interpreter','none');
     ylabel(axis_tc,'df/f','interpreter','none');
     
