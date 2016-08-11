@@ -1,6 +1,6 @@
 function plotTuning(selectedPixel,trialResp,plotDetail,trialDetail,imagingDetail,timeWindows,axis_tc,axis_tuning)
     currPixelResp = squeeze(trialResp(selectedPixel(1),selectedPixel(2),:));
-    currPixelTc = getPixTc(selectedPixel,2);
+    currPixelTc = getPixTc(selectedPixel,plotDetail.filterPx);
     
     primCond = plotDetail.param1name;
     primCondIdx = find(~cellfun(@isempty,(strfind(trialDetail.domains,primCond))));
@@ -55,13 +55,14 @@ function plotTuning(selectedPixel,trialResp,plotDetail,trialDetail,imagingDetail
         s(end+1) = s(1);
     end
     errorbar(axis_tuning,primCondVal,m,s,'ko-','linewidth',2);
-    plot(axis_tuning,primCondVal,m,'ko-','linewidth',2);
+    h = plot(axis_tuning,primCondVal,m,'ko-','linewidth',2);
     
-    
+    set(h,'MarkerFaceColor',[0.94 0.94 0.94]);
     set(axis_tuning,'xlim',[min(primCondVal) max(primCondVal)],...
                     'xtick',primCondVal,...
                     'linewidth',2,...
-                    'tickdir','out');
+                    'tickdir','out',...
+                    'color',[0.94 0.94 0.94]);
 	
 	box(axis_tuning,'off');
     xlabel(axis_tuning,primCond,'interpreter','none');
@@ -97,14 +98,15 @@ function plotTuning(selectedPixel,trialResp,plotDetail,trialDetail,imagingDetail
     set(axis_tc,'xlim',[timeWindows.baselineRange(1) (imagingDetail.tPerFrame*maxFrames)*1000+timeWindows.baselineRange(1)],...
                 'tickdir','out',...
                 'linewidth',2,...
-                'ylim',plotYlims);
+                'ylim',plotYlims,...
+                'color',[0.94 0.94 0.94]);
     
     % scale bar for 10 frames
     plotXlims = get(axis_tc,'xlim');
     line([plotXlims(2)-(sum(plotXlims)/7)-imagingDetail.tPerFrame*10*1000 plotXlims(2)-(sum(plotXlims)/7)],[plotYlims(2)-(sum(plotYlims)/7) plotYlims(2)-(sum(plotYlims)/7)],'linewidth',5,'parent',axis_tc);
     
     xlabel(axis_tc,'Time (ms)','interpreter','none');
-    ylabel(axis_tc,'df/f','interpreter','none');
+    ylabel(axis_tc,'\DeltaF/F_o','interpreter','tex');
     
 	hold(axis_tc,'off')
 end
