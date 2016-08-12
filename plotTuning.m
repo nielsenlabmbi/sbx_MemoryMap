@@ -1,6 +1,6 @@
 function plotTuning(selectedPixel,trialResp,plotDetail,trialDetail,imagingDetail,timeWindows,axis_tc,axis_tuning)
     currPixelResp = squeeze(trialResp(selectedPixel(1),selectedPixel(2),:));
-    currPixelTc = getPixTc(selectedPixel,plotDetail.filterPx);
+    currPixelTc = getPixTc(selectedPixel,plotDetail.filterPx+2);
     
     primCond = plotDetail.param1name;
     primCondIdx = find(~cellfun(@isempty,(strfind(trialDetail.domains,primCond))));
