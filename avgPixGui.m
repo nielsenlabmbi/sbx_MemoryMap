@@ -51,8 +51,7 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
         handles.dataLoaded = false;
     end
     
-    % gui changes
-    % button icons
+    % gui changes -> button icons
     pixIcon = imread('icons/pix.png'); handles.pixIcon = imresize(pixIcon, [40 40]);
     ctmIcon = imread('icons/ctm.png'); handles.ctmIcon = imresize(ctmIcon, [40 40]);
     mmIcon  = imread('icons/mm.png');  handles.mmIcon  = imresize(mmIcon, [40 40]);
@@ -71,8 +70,15 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     set(handles.tbutton_maskmode,'CData',handles.mmIcon);
     set(handles.button_adjustTimeWindows,'CData',handles.twIcon);
     
+    % gui changes -> masks
+    handles.mask.sizeMult = 5;
+    handles.mask.size = get(handles.slider_maskSize,'value') * handles.mask.sizeMult;
+    
     handles.clickToMagnifyData = [4,0.08];
     handles.buttonDownOnAxis = false;
+    handles.plotDetail.filterPx = 1;
+    
+    % gui changes -> analyzer manipulation
     set(handles.pulldown_param1,'String',handles.trialDetail.domains);
     set(handles.pulldown_param1,'Value',1);
     set(handles.textbox_moduloValue,'String','180','Enable','off');
@@ -82,16 +88,11 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     else
         set(handles.checkbox_circular,'Value',0);
         handles.plotDetail.param1_circular = false;
-    end
-    
-    handles.plotDetail.filterPx = 2;
+    end  
     
     handles.plotDetail.param1name = handles.trialDetail.domains{1};
     handles.plotDetail.param1_modulo = false;
     handles.plotDetail.param1_moduloVal = 180;
-    
-    handles.mask.sizeMult = 5;
-    handles.mask.size = get(handles.slider_maskSize,'value') * handles.mask.sizeMult;
     
     if handles.trialDetail.isMultipleDomain
         set(handles.pulldown_param2,'String',handles.trialDetail.domains);
