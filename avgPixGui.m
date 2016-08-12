@@ -76,7 +76,7 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     
     handles.clickToMagnifyData = [4,0.08];
     handles.buttonDownOnAxis = false;
-    handles.plotDetail.filterPx = 1;
+    handles.plotDetail.filterPx = 0;
     
     % gui changes -> analyzer manipulation
     set(handles.pulldown_param1,'String',handles.trialDetail.domains);
@@ -414,20 +414,28 @@ function slider_maskSize_Callback(hObject, ~, handles)
 
 function button_adjustTimeWindows_Callback(hObject, ~, handles)
     if handles.dataLoaded
-        prompt = {'Max baseline frames:','Max post stimulus frames:','Response start frame after stimulus onset:','Response stop frame after stimulus offset:'};
+        prompt = {'Baseline duration (in ms):','Post-stimulus duration (in ms):','Response start after stimulus onset (in ms):','Response stop after stimulus offset (in ms):'};
         dlg_title = 'Input';
         num_lines = 1;
-        defaultans = {num2str(handles.imagingDetail.maxBaselineFrames),...
-            num2str(handles.imagingDetail.maxPostFrames),...
-            num2str(handles.timeWindows.respFrames(1)),...
-            num2str(handles.timeWindows.respFrames(2))};
+        defaultans = {num2str(handles.imagingDetail.maxBaselineFrames*handles.imagingDetail.tPerFrame*1000),...
+            num2str(handles.imagingDetail.maxPostFrames*handles.imagingDetail.tPerFrame*1000),...
+            num2str(handles.timeWindows.respFrames(1)*handles.imagingDetail.tPerFrame*1000),...
+            num2str(handles.timeWindows.respFrames(2)*handles.imagingDetail.tPerFrame*1000)};
         answer = inputdlg(prompt,dlg_title,num_lines,defaultans);
         if isempty(answer); return; end
 
-        maxBaselineFrames = str2double(answer{1});
-        maxPostFrames = str2double(answer{2});
-        respFrames = [str2double(answer{3}) str2double(answer{4})];
-
+        maxBaselineFrames = round(str2double(answer{1})/(handles.imagingDetail.tPerFrame*1000));
+        maxPostFrames = round(str2double(answer{2})/(handles.imagingDetail.tPerFrame*1000));
+        respFrames = [round(str2double(answer{3})/(handles.imagingDetail.tPerFrame*1000))...
+                      round(str2double(answer{4})/(handles.imagingDetail.tPerFrame*1000))];
+        
+      % nothing changed
+        if maxBaselineFrames == handles.imagingDetail.maxBaselineFrames && ...
+           maxPostFrames == handles.imagingDetail.maxPostFrames && ...
+           isequal(respFrames,handles.timeWindows.respFrames)
+            return;
+        end
+        
         if respFrames(2) > maxPostFrames
             msgbox('The number of response frames exceed the maximum requested frames. Please try again.','Frame count inconsistant','error');
             return;
