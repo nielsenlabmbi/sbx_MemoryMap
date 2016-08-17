@@ -76,7 +76,9 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     
     handles.clickToMagnifyData = [4,0.08];
     handles.buttonDownOnAxis = false;
-    handles.plotDetail.filterPx = 0;
+    
+    handles.plotDetail.filterPx = 10;
+    set(handles.slider_filterPx,'value',handles.plotDetail.filterPx);
     
     % gui changes -> analyzer manipulation
     set(handles.pulldown_param1,'String',handles.trialDetail.domains);
@@ -132,7 +134,8 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     % get tuning for all pixels
     if ~isempty(handles.timeWindows)
         [handles.pixelTuning,handles.trialResp] = getPixelTuning...
-            (handles.trialDetail,handles.timeWindows,handles.imagingDetail.imageSize);
+            (handles.trialDetail,handles.timeWindows,...
+            handles.plotDetail.filterPx,handles.imagingDetail.imageSize);
     else
         handles.pixelTuning = []; handles.trialResp = [];
     end
@@ -453,6 +456,35 @@ function button_adjustTimeWindows_Callback(hObject, ~, handles)
     end
     guidata(hObject, handles);
 
+function slider_filterPx_Callback(hObject, ~, handles)
+    handles.plotDetail.filterPx = round(get(hObject,'Value'));
+    set(handles.slider_filterPx,'value',handles.plotDetail.filterPx);
+    
+    % get tuning for all pixels
+    if ~isempty(handles.timeWindows)
+        [handles.pixelTuning,handles.trialResp] = getPixelTuning...
+            (handles.trialDetail,handles.timeWindows,...
+            handles.plotDetail.filterPx,handles.imagingDetail.imageSize);
+    else
+        handles.pixelTuning = []; handles.trialResp = [];
+    end
+    
+    % get mean image
+    if ~isempty(handles.pixelTuning)
+        [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
+        plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
+        handles.plotDetail.anatomy = getAnatomy;
+    else
+        handles.plotDetail.param1val = [];
+        handles.plotDetail.anatomy = [];
+    end
+    
+    set(handles.axis_image,'xtick',[],'ytick',[]);
+    box(handles.axis_image,'on');
+    
+    guidata(hObject, handles);
+    
+    
 % =========================================================================
 % ====================== IMAGE AXIS BUTTONS DONE ==========================
 % =========================================================================    
@@ -646,6 +678,11 @@ function slider_maskSize_CreateFcn(hObject, ~, ~)
     if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
         set(hObject,'BackgroundColor',[.9 .9 .9]);
     end
+    
+function slider_filterPx_CreateFcn(hObject, ~, ~)
+    if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+        set(hObject,'BackgroundColor',[.9 .9 .9]);
+    end
 
 % =========================================================================
 % ========================= CREATEFNs DONE ================================
@@ -741,7 +778,8 @@ function handles = loadDataAndRefreshGui(handles,maxBaselineFrames,maxPostFrames
 function handles = updateTimeWindowsAndReplot(handles,respFrames)
     handles.timeWindows = getTimeWindows(handles.imagingDetail,respFrames);
     [handles.pixelTuning,handles.trialResp] = getPixelTuning...
-        (handles.trialDetail,handles.timeWindows,handles.imagingDetail.imageSize);
+        (handles.trialDetail,handles.timeWindows,...
+        handles.plotDetail.filterPx,handles.imagingDetail.imageSize);
     handles.plotDetail.anatomy = getAnatomy;
     [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
     plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);

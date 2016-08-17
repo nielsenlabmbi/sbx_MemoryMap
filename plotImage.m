@@ -15,7 +15,7 @@ function plotImage(dispImage,plotDetail,hImage)
         nColors = length(plotDetail.param1val);
     end
 
-    maxCond = smoothImage(maxCond,plotDetail.filterPx);
+%     maxCond = smoothImage(maxCond,plotDetail.filterPx);
     
     maxCondImg = (maxCond-1)/(nColors-1); %scale between 0 and 1, making sure that the first condition repeats
     maxCondImg = round(maxCondImg*63+1);
@@ -55,12 +55,4 @@ function plotImage(dispImage,plotDetail,hImage)
     
     set(hImage,'xtick',[],'ytick',[]);
     box(hImage,'on');
-end
-
-function smoothImg = smoothImage(img,filterPx)
-    imgPadded = padarray(img,[filterPx filterPx],'replicate');
-    kernel = ones(2*filterPx + 1) / ((2*filterPx + 1)^2);
-    smoothImg = filter2(kernel,imgPadded,'valid');
-    smoothImg = (smoothImg - min(smoothImg(:))) / (max(smoothImg(:)) - min(smoothImg(:)));
-    smoothImg = round(min(img(:)) + ((max(img(:))-1) * smoothImg));
 end
