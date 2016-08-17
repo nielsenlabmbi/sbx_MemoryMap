@@ -1,10 +1,15 @@
 function mmapAPIGeneralCall
+    % wait to get data: sbx is slow
+    pause(5);
+
     % loading fake data
     global pixelTc imagingDetail exptDetail
-    exptDetail.animal = 'ftaf8';
-    exptDetail.unit = '000';
-    exptDetail.expt = '000';
-    getPixelTcFromSbx
+%     exptDetail.animal = 'ftaf8';
+%     exptDetail.unit = '000';
+%     exptDetail.expt = '000';
+    if isempty(pixelTc)
+        getPixelTcFromSbx
+    end
     % ==================
     
     % any preprocessing to be done on inputs should be done here.
