@@ -52,17 +52,17 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     end
     
     % gui changes -> button icons
-    pixIcon = imread('icons/pix.png'); handles.pixIcon = imresize(pixIcon, [40 40]);
-    ctmIcon = imread('icons/ctm.png'); handles.ctmIcon = imresize(ctmIcon, [40 40]);
-    mmIcon  = imread('icons/mm.png');  handles.mmIcon  = imresize(mmIcon, [40 40]);
-    anatIcon  = imread('icons/anat.png');  handles.anatIcon  = imresize(anatIcon, [40 40]);
+    pixIcon = imread('avgPixIcon_pix.png'); handles.pixIcon = imresize(pixIcon, [40 40]);
+    ctmIcon = imread('avgPixIcon_ctm.png'); handles.ctmIcon = imresize(ctmIcon, [40 40]);
+    mmIcon  = imread('avgPixIcon_mm.png');  handles.mmIcon  = imresize(mmIcon, [40 40]);
+    anatIcon  = imread('avgPixIcon_anat.png');  handles.anatIcon  = imresize(anatIcon, [40 40]);
     
-    pixIcon_on = imread('icons/pix_on.png'); handles.pixIcon_on = imresize(pixIcon_on, [40 40]);
-    ctmIcon_on = imread('icons/ctm_on.png'); handles.ctmIcon_on = imresize(ctmIcon_on, [40 40]);
-    mmIcon_on  = imread('icons/mm_on.png');  handles.mmIcon_on  = imresize(mmIcon_on, [40 40]);
-    anatIcon_on  = imread('icons/anat_on.png');  handles.anatIcon_on  = imresize(anatIcon_on, [40 40]);
+    pixIcon_on = imread('avgPixIcon_pix_on.png'); handles.pixIcon_on = imresize(pixIcon_on, [40 40]);
+    ctmIcon_on = imread('avgPixIcon_ctm_on.png'); handles.ctmIcon_on = imresize(ctmIcon_on, [40 40]);
+    mmIcon_on  = imread('avgPixIcon_mm_on.png');  handles.mmIcon_on  = imresize(mmIcon_on, [40 40]);
+    anatIcon_on  = imread('avgPixIcon_anat_on.png');  handles.anatIcon_on  = imresize(anatIcon_on, [40 40]);
     
-    twIcon  = imread('icons/tw.png');  handles.twIcon  = imresize(twIcon, [40 40]);
+    twIcon  = imread('avgPixIcon_tw.png');  handles.twIcon  = imresize(twIcon, [40 40]);
     
     set(handles.tbutton_pixelSelect,'CData',handles.pixIcon);
     set(handles.tbutton_showAnatomy,'CData',handles.anatIcon);
@@ -71,8 +71,11 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     set(handles.button_adjustTimeWindows,'CData',handles.twIcon);
     
     % gui changes -> masks
-    handles.mask.sizeMult = 5;
-    handles.mask.size = get(handles.slider_maskSize,'value') * handles.mask.sizeMult;
+    handles.mask.roiSizeMult = 5;
+    handles.mask.roiSize = get(handles.slider_maskSize,'value') * handles.mask.roiSizeMult;
+    handles.mask.roiCount = 0;
+    handles.mask.maskLayerHandle = [];
+    handles.mask.maskImage = zeros(handles.imagingDetail.imageSize);
     
     handles.clickToMagnifyData = [4,0.08];
     handles.buttonDownOnAxis = false;
@@ -175,12 +178,13 @@ varargout{1} = handles.output;
 
 function uipushtool_open_ClickedCallback(hObject, ~, handles)
     global exptDetail
+    load('currentExpt.mat')
     
     % in case of sbx load
     prompt = {'Animal:','Unit:','Experiment:'};
     dlg_title = 'Input';
     num_lines = 1;
-    defaultans = {'ftaf8','000','000'};
+    defaultans = {exptDetail.animal,exptDetail.unit,exptDetail.expt};
     answer = inputdlg(prompt,dlg_title,num_lines,defaultans);
     if isempty(answer); return; end
     
@@ -248,6 +252,7 @@ function uitoggletool_zoomOut_ClickedCallback(hObject, ~, handles)
 % =========================================================================
 % ======================== ANALYZER MANIPULATION ==========================
 % =========================================================================
+
 function pulldown_param1_Callback(hObject, ~, handles)
     contents = cellstr(get(hObject,'String'));
     handles.plotDetail.param1name = contents{get(hObject,'Value')};
@@ -355,7 +360,6 @@ function pulldown_param2Value_Callback(hObject, ~, handles)
 % ======================== IMAGE AXIS BUTTONS =============================
 % =========================================================================
 
-
 function tbutton_showAnatomy_Callback(hObject, ~, handles)
     handles.plotDetail.showAnatomy = ~handles.plotDetail.showAnatomy;
     if handles.plotDetail.showAnatomy
@@ -412,7 +416,7 @@ function tbutton_pixelSelect_Callback(hObject, ~, handles)
     
 function slider_maskSize_Callback(hObject, ~, handles)
     normMaskSize = get(hObject,'value');
-    handles.mask.size = normMaskSize * handles.mask.sizeMult;
+    handles.mask.roiSize = normMaskSize * handles.mask.roiSizeMult;
     guidata(hObject, handles);
 
 function button_adjustTimeWindows_Callback(hObject, ~, handles)
@@ -484,7 +488,6 @@ function slider_filterPx_Callback(hObject, ~, handles)
     
     guidata(hObject, handles);
     
-    
 % =========================================================================
 % ====================== IMAGE AXIS BUTTONS DONE ==========================
 % =========================================================================    
@@ -493,6 +496,8 @@ function slider_filterPx_Callback(hObject, ~, handles)
 % ================== CLICK TO MAGNIFY =====================================
 % =========================================================================
 
+% this function also does pixel tuning selection and mask creation etc.
+% it also detects clicks on the tuning axis and displays tc for that condition
 function figure1_WindowButtonDownFcn(hObject, ~, handles) 
     mouseLoc = get(handles.axis_image,'currentpoint');
     mouseLoc = fliplr(ceil(mouseLoc(1,1:2)));  
@@ -502,6 +507,7 @@ function figure1_WindowButtonDownFcn(hObject, ~, handles)
        mouseLoc(2) > 0
         handles.buttonDownOnAxis = true;
         handles.selectedPixel = mouseLoc;
+        % handle magnify
         if handles.clickToMagnify
             f1 = hObject;
             a1 = handles.axis_image;
@@ -522,12 +528,20 @@ function figure1_WindowButtonDownFcn(hObject, ~, handles)
             set(f1, ...
               'CurrentAxes',a1);
             figure1_WindowButtonMotionFcn(hObject,[],handles);
+        % handle pixel tuning selection
         elseif handles.pixelmode && ~isempty(handles.trialResp)
             plotTuning(mouseLoc,handles.trialResp,handles.plotDetail,...
                 handles.trialDetail,handles.imagingDetail,handles.timeWindows,...
                 handles.axis_tc,handles.axis_tuning)
+        elseif handles.maskmode && ~isempty(handles.trialResp)
+            r = handles.mask.roiSize;
+            c = mouseLoc;
+            handles.mask = addMask(handles.mask,r,c);
+            showMasks(handles.mask);
         end
     end
+    
+    % tuning axis clicks
     mouseLoc = get(handles.axis_tuning,'currentpoint');
     if handles.dataLoaded
         if isfield(handles.plotDetail,'param1val') && ...
@@ -784,6 +798,33 @@ function handles = updateTimeWindowsAndReplot(handles,respFrames)
     [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
     plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
     
+function mask = addMask(mask,r,c)
+    if ~isfield(mask,'roiList'); mask.roiList = []; end
+    mask.roiCount = mask.roiCount + 1;
+    mask.roiList(mask.roiCount).r = r;
+    mask.roiList(mask.roiCount).c = c;
+
+    x = 1:size(mask.maskImage,1);
+    y = 1:size(mask.maskImage,2);
+    [xx,yy] = meshgrid(x,y);
+
+    cellMask = hypot(xx - c(1), yy - c(2)) <= r;
+    mask.maskImage = mask.maskImage + mask.roiCount*cellMask;
+    mask.roiList(mask.roiCount).pixels = find(cellMask);
+    
+function showMasks(mask)
+    if isempty(mask.maskLayerHandle)
+        
+    end
+    
+    axes(handles.Image)
+    h = imellipse(gca,[min(j) min(i) max(j)-min(j) max(i)-min(i)]);
+    wait(h);
+    % Create a mask from that image
+    mask = createMask(h);
+    % Now we're done with the ellipse, delete it
+    delete(h);
+
 % =========================================================================
 % ======================= HELPER FUNCTIONS DONE ===========================
 % =========================================================================
