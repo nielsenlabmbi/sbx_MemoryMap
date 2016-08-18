@@ -75,7 +75,11 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     handles.mask.roiSize = get(handles.slider_maskSize,'value') * handles.mask.roiSizeMult;
     handles.mask.roiCount = 0;
     handles.mask.maskLayerHandle = [];
-    handles.mask.maskImage = zeros(handles.imagingDetail.imageSize);
+    if ~isempty(handles.imagingDetail)
+        handles.mask.maskImage = zeros(handles.imagingDetail.imageSize);
+    else
+        handles.mask.maskImage = zeros(512,796); % hack;
+    end
     
     handles.clickToMagnifyData = [4,0.08];
     handles.buttonDownOnAxis = false;
@@ -191,6 +195,9 @@ function uipushtool_open_ClickedCallback(hObject, ~, handles)
     exptDetail.animal = answer{1};
     exptDetail.unit = answer{2};
     exptDetail.expt = answer{3};
+    
+    fileLoc = which('currentExpt.mat');
+    save(fileLoc,'exptDetail');
     
     handles = loadDataAndRefreshGui(handles);   
     guidata(hObject, handles);
