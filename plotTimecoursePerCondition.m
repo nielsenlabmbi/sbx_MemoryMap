@@ -1,6 +1,6 @@
 function plotTimecoursePerCondition(currentPixel,selectedCondition,plotDetail,trialDetail,imagingDetail,timeWindows,axis_tc)
     % currPixelTc = getPixTc(currentPixel,plotDetail.filterPx+1);
-    currPixelTc = getPixTc(currentPixel,1);
+    currPixelTc = getPixTc(currentPixel,3);
     
     primCond = plotDetail.param1name;
     primCondIdx = find(~cellfun(@isempty,(strfind(trialDetail.domains,primCond))));

@@ -6,6 +6,11 @@ function success  = getPixelTcFromSbx(maxBaselineFrames,maxPostFrames)
     
     sbxPath = ['C:\2pdata\' exptDetail.animal '\' exptDetail.animal '_' exptDetail.unit '_' exptDetail.expt ];
     analyzerPath = ['Z:\2P\Analyzer\' exptDetail.animal '\' exptDetail.animal '_u' exptDetail.unit '_' exptDetail.expt '.analyzer'];
+    
+    if ~exist([sbxPath '.mat'],'file')
+        success = false;
+        return;
+    end
     load(sbxPath); % load info file
     
     sampleFrame = sbxread(sbxPath,0,1);

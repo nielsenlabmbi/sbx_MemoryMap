@@ -32,7 +32,7 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     handles.clickToMagnify = true;
     handles.maskmode = false;
     handles.pixelmode = false;
-    handles.plotDetail.showAnatomy = false;
+    handles.plotDetail.showAnatomy = true;
     
     % have the details in handles for easy access
     % note: pixelTc is still global
@@ -52,27 +52,27 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     end
     
     % gui changes -> button icons
+    % anatomy axis buttons
     pixIcon = imread('avgPixIcon_pix.png'); handles.pixIcon = imresize(pixIcon, [40 40]);
     ctmIcon = imread('avgPixIcon_ctm.png'); handles.ctmIcon = imresize(ctmIcon, [40 40]);
     mmIcon  = imread('avgPixIcon_mm.png');  handles.mmIcon  = imresize(mmIcon, [40 40]);
-    anatIcon  = imread('avgPixIcon_anat.png');  handles.anatIcon  = imresize(anatIcon, [40 40]);
     
     pixIcon_on = imread('avgPixIcon_pix_on.png'); handles.pixIcon_on = imresize(pixIcon_on, [40 40]);
     ctmIcon_on = imread('avgPixIcon_ctm_on.png'); handles.ctmIcon_on = imresize(ctmIcon_on, [40 40]);
     mmIcon_on  = imread('avgPixIcon_mm_on.png');  handles.mmIcon_on  = imresize(mmIcon_on, [40 40]);
-    anatIcon_on  = imread('avgPixIcon_anat_on.png');  handles.anatIcon_on  = imresize(anatIcon_on, [40 40]);
-    
-    twIcon  = imread('avgPixIcon_tw.png');  handles.twIcon  = imresize(twIcon, [40 40]);
     
     set(handles.tbutton_pixelSelect,'CData',handles.pixIcon);
-    set(handles.tbutton_showAnatomy,'CData',handles.anatIcon);
     set(handles.tbutton_clickToMagnify,'CData',handles.ctmIcon_on);
     set(handles.tbutton_maskmode,'CData',handles.mmIcon);
+    
+    twIcon  = imread('avgPixIcon_tw.png');  handles.twIcon  = imresize(twIcon, [40 40]);
     set(handles.button_adjustTimeWindows,'CData',handles.twIcon);
     
+    % gui changes -> button icons
+    % functional axis buttons
+    
+    
     % gui changes -> masks
-    handles.mask.roiSizeMult = 5;
-    handles.mask.roiSize = get(handles.slider_maskSize,'value') * handles.mask.roiSizeMult;
     handles.mask.roiCount = 0;
     handles.mask.maskLayerHandle = [];
     if ~isempty(handles.imagingDetail)
@@ -152,6 +152,13 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
         [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
         plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
         handles.plotDetail.anatomy = getAnatomy;
+        
+        cla(handles.axis_anatomy);
+        if handles.plotDetail.showAnatomy        
+            imagesc(handles.plotDetail.anatomy,'parent',handles.axis_anatomy);
+            colormap(handles.axis_anatomy,'gray')
+            hold(handles.axis_anatomy,'on')
+        end
     else
         handles.plotDetail.param1val = [];
         handles.plotDetail.anatomy = [];
@@ -159,6 +166,9 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     
     set(handles.axis_image,'xtick',[],'ytick',[]);
     box(handles.axis_image,'on');
+    
+    set(handles.axis_anatomy,'xtick',[],'ytick',[]);
+    box(handles.axis_anatomy,'on')
     
     if ~handles.dataLoaded
         msgbox('No global data was found. Use the ''Open file...'' button to load data.','No data found','warn');
@@ -364,27 +374,12 @@ function pulldown_param2Value_Callback(hObject, ~, handles)
 % =========================================================================
 
 % =========================================================================
-% ======================== IMAGE AXIS BUTTONS =============================
+% ======================== ANATOMY AXIS BUTTONS ===========================
 % =========================================================================
-
-function tbutton_showAnatomy_Callback(hObject, ~, handles)
-    handles.plotDetail.showAnatomy = ~handles.plotDetail.showAnatomy;
-    if handles.plotDetail.showAnatomy
-        set(handles.tbutton_showAnatomy,'CData',handles.anatIcon_on);
-    else
-        set(handles.tbutton_showAnatomy,'CData',handles.anatIcon);
-    end
-    
-    if handles.dataLoaded
-        plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
-    end
-    
-    guidata(hObject, handles);
 
 function tbutton_maskmode_Callback(hObject, ~, handles)
     handles.maskmode = ~handles.maskmode;
     if handles.maskmode
-        set(handles.slider_maskSize,'enable','on');
         handles.clickToMagnify = 0;
         handles.pixelmode = 0;
 %         showMask;
@@ -400,7 +395,6 @@ function tbutton_maskmode_Callback(hObject, ~, handles)
 function tbutton_clickToMagnify_Callback(hObject, ~, handles)
     handles.clickToMagnify = ~handles.clickToMagnify;
     if handles.clickToMagnify
-        set(handles.slider_maskSize,'enable','off');
         handles.maskmode = 0;
         handles.pixelmode = 0;
         set(handles.tbutton_pixelSelect,'CData',handles.pixIcon);
@@ -412,18 +406,12 @@ function tbutton_clickToMagnify_Callback(hObject, ~, handles)
 function tbutton_pixelSelect_Callback(hObject, ~, handles)
     handles.pixelmode = ~handles.pixelmode;
     if handles.pixelmode
-        set(handles.slider_maskSize,'enable','off');
         handles.maskmode = 0;
         handles.clickToMagnify = 0;
         set(handles.tbutton_pixelSelect,'CData',handles.pixIcon_on);
         set(handles.tbutton_clickToMagnify,'CData',handles.ctmIcon);
         set(handles.tbutton_maskmode,'CData',handles.mmIcon);
     end
-    guidata(hObject, handles);
-    
-function slider_maskSize_Callback(hObject, ~, handles)
-    normMaskSize = get(hObject,'value');
-    handles.mask.roiSize = normMaskSize * handles.mask.roiSizeMult;
     guidata(hObject, handles);
 
 function button_adjustTimeWindows_Callback(hObject, ~, handles)
@@ -468,6 +456,7 @@ function button_adjustTimeWindows_Callback(hObject, ~, handles)
     guidata(hObject, handles);
 
 function slider_filterPx_Callback(hObject, ~, handles)
+round(get(hObject,'Value'))
     handles.plotDetail.filterPx = round(get(hObject,'Value'));
     set(handles.slider_filterPx,'value',handles.plotDetail.filterPx);
     
@@ -496,9 +485,25 @@ function slider_filterPx_Callback(hObject, ~, handles)
     guidata(hObject, handles);
     
 % =========================================================================
-% ====================== IMAGE AXIS BUTTONS DONE ==========================
+% ====================== ANATOMY AXIS BUTTONS DONE ========================
 % =========================================================================    
     
+% =========================================================================
+% ======================== FUNCTIONAL AXIS BUTTONS ========================
+% =========================================================================
+
+function button_mask_add_Callback(hObject, ~, handles)
+
+function button_mask_remove_Callback(hObject, ~, handles)
+
+function button_mask_modify_Callback(hObject, ~, handles)
+
+function button_maskGroup_move_Callback(hObject, ~, handles)
+
+% =========================================================================
+% ==================== FUNCTIONAL AXIS BUTTONS DONE =======================
+% =========================================================================
+
 % =========================================================================
 % ================== CLICK TO MAGNIFY =====================================
 % =========================================================================
@@ -520,26 +525,24 @@ function figure1_WindowButtonDownFcn(hObject, ~, handles)
             a1 = handles.axis_image;
             a2 = copyobj(a1,f1);
 
-            set(f1, ...
-              'UserData',[f1,a1,a2], ...
-              'CurrentAxes',a2);
-            set(a2, ...
-              'UserData',handles.clickToMagnifyData, ...  %magnification, frame size
-              'Color',get(a1,'Color'), ...
-              'xtick',[],...
-              'ytick',[],...
-              'Box','on');
+            set(f1,'UserData',[f1,a1,a2],'CurrentAxes',a2);
+            set(a2,'Color',get(a1,'Color'),'xtick',[],'ytick',[],'Box','on');
             xlabel(''); ylabel(''); zlabel(''); title('');
-            set(a1, ...
-              'Color',get(a1,'Color')*0.95);
-            set(f1, ...
-              'CurrentAxes',a1);
+            set(a1,'Color',get(a1,'Color')*0.95);
             figure1_WindowButtonMotionFcn(hObject,[],handles);
+            
         % handle pixel tuning selection
         elseif handles.pixelmode && ~isempty(handles.trialResp)
             plotTuning(mouseLoc,handles.trialResp,handles.plotDetail,...
                 handles.trialDetail,handles.imagingDetail,handles.timeWindows,...
                 handles.axis_tc,handles.axis_tuning)
+            if isfield(handles,'anatomyPointHandle') && ~isempty(handles.anatomyPointHandle) 
+                delete(handles.anatomyPointHandle);
+            end
+            hPoint = plot(handles.axis_anatomy,mouseLoc(2),mouseLoc(1),'r.','markersize',20);
+            handles.anatomyPointHandle = hPoint;
+        
+        % handle clicks for mask mode
         elseif handles.maskmode && ~isempty(handles.trialResp)
             r = handles.mask.roiSize;
             c = mouseLoc;
@@ -574,13 +577,13 @@ function figure1_WindowButtonMotionFcn(hObject, ~, handles)
             H = get(hObject,'UserData');
             if ~isempty(H)
                 f1 = H(1); a1 = H(2); a2 = H(3);
-                a2_param = get(a2,'UserData');
+                a2_param = handles.clickToMagnifyData;
                 f_pos = get(f1,'Position');
                 a1_pos = get(a1,'Position');
 
                 [f_cp, a1_cp] = pointer2d(f1,a1);
 
-                set(a2,'Position',[(f_cp./f_pos(3:4)) 0 0]+a2_param(2)*a1_pos(3)*[-1 -1 2 2]);
+                set(a2,'Position',[(f_cp./f_pos(3:4)) 0 0] + a2_param(2)*a1_pos(3)*[-1 -1 2 2]);
                 a2_pos = get(a2,'Position');
 
                 set(a2,'XLim',a1_cp(1)+(1/a2_param(1))*(a2_pos(3)/a1_pos(3))*diff(get(a1,'XLim'))*[-0.5 0.5]);
@@ -590,6 +593,11 @@ function figure1_WindowButtonMotionFcn(hObject, ~, handles)
             plotTuning(mouseLoc,handles.trialResp,handles.plotDetail,...
                 handles.trialDetail,handles.imagingDetail,handles.timeWindows,...
                 handles.axis_tc,handles.axis_tuning)
+            if isfield(handles,'anatomyPointHandle') && ~isempty(handles.anatomyPointHandle) 
+                delete(handles.anatomyPointHandle);
+            end
+            hPoint = plot(handles.axis_anatomy,mouseLoc(2),mouseLoc(1),'r.','markersize',20);
+            handles.anatomyPointHandle = hPoint;
         end
     end
     guidata(hObject, handles);
@@ -606,15 +614,14 @@ function figure1_WindowButtonUpFcn(hObject, ~, handles)
         if handles.clickToMagnify
             H = get(hObject,'UserData');
             f1 = H(1); a1 = H(2); a2 = H(3);
-            set(a1, ...
-              'Color',get(a2,'Color'));
-            set(f1, ...
-              'UserData',[], ...
-              'Pointer','arrow', ...
-              'CurrentAxes',a1);
+            set(a1,'Color',get(a2,'Color'));
+            set(f1,'UserData',[],'Pointer','arrow','CurrentAxes',a1);
             if ~strcmp(get(f1,'SelectionType'),'alt'),
               delete(a2);
             end
+        end
+        if isfield(handles,'anatomyPointHandle') && ~isempty(handles.anatomyPointHandle) 
+            delete(handles.anatomyPointHandle);
         end
     end
     guidata(hObject, handles);
@@ -640,10 +647,8 @@ function figure1_KeyPressFcn(hObject, ~, handles)
     guidata(hObject, handles);
 
 function [fig_pointer_pos, axes_pointer_val] = pointer2d(fig_hndl,axes_hndl)
-    if (nargin == 0), fig_hndl = gcf; axes_hndl = gca; end;
-    if (nargin == 1), axes_hndl = get(fig_hndl,'CurrentAxes'); end;
-
     set(fig_hndl,'Units','pixels');
+    set(axes_hndl,'Units','normalized');
 
     pointer_pos = get(0,'PointerLocation');	%pixels {0,0} lower left
     fig_pos = get(fig_hndl,'Position');	%pixels {l,b,w,h}
@@ -651,9 +656,9 @@ function [fig_pointer_pos, axes_pointer_val] = pointer2d(fig_hndl,axes_hndl)
     fig_pointer_pos = pointer_pos - fig_pos([1,2]);
     set(fig_hndl,'CurrentPoint',fig_pointer_pos);
 
-    if (isempty(axes_hndl)),
+    if isempty(axes_hndl)
         axes_pointer_val = [];
-    elseif (nargout == 2),
+    elseif nargout == 2
         axes_pointer_line = get(axes_hndl,'CurrentPoint');
         axes_pointer_val = sum(axes_pointer_line)/2;
     end
@@ -721,7 +726,7 @@ function handles = loadDataAndRefreshGui(handles,maxBaselineFrames,maxPostFrames
     if ~exist('respFrames','var');          respFrames = [1 8];     end
 
     if ~getPixelTcFromSbx(maxBaselineFrames,maxPostFrames)
-        msgbox('Trials don''t match.','Error','error');
+        msgbox('File does not exist or trials don''t match.','Error','error');
         return;
     end
     % ==================
@@ -804,6 +809,14 @@ function handles = updateTimeWindowsAndReplot(handles,respFrames)
     handles.plotDetail.anatomy = getAnatomy;
     [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
     plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
+    cla(handles.axis_anatomy);
+    if handles.plotDetail.showAnatomy        
+        imagesc(handles.plotDetail.anatomy,'parent',handles.axis_anatomy);
+        colormap(handles.axis_anatomy,'gray')
+        hold(handles.axis_anatomy,'on')
+        set(handles.axis_anatomy,'xtick',[],'ytick',[]);
+        box(handles.axis_anatomy,'on')
+    end
     
 function mask = addMask(mask,r,c)
     if ~isfield(mask,'roiList'); mask.roiList = []; end
@@ -835,3 +848,28 @@ function showMasks(mask)
 % =========================================================================
 % ======================= HELPER FUNCTIONS DONE ===========================
 % =========================================================================
+
+
+% --------------------------------------------------------------------
+function contextMenu_mask_Callback(hObject, eventdata, handles)
+% hObject    handle to contextMenu_mask (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --------------------------------------------------------------------
+function contextMenu_mask_modify_Callback(hObject, eventdata, handles)
+% hObject    handle to contextMenu_mask_modify (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+% --------------------------------------------------------------------
+function contextMenu_mask_remove_Callback(hObject, eventdata, handles)
+% hObject    handle to contextMenu_mask_remove (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+
+
+

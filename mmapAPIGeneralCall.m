@@ -4,9 +4,6 @@ function mmapAPIGeneralCall
 
     % loading fake data
     global pixelTc imagingDetail exptDetail
-%     exptDetail.animal = 'ftaf8';
-%     exptDetail.unit = '000';
-%     exptDetail.expt = '000';
     if isempty(pixelTc)
         getPixelTcFromSbx
     end
