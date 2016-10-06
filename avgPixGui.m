@@ -1,3 +1,7 @@
+% =========================================================================
+% =========================== CORE CALLBACKS ==============================
+% =========================================================================
+
 function varargout = avgPixGui(varargin)
     gui_Singleton = 1;
     gui_State = struct('gui_Name',       mfilename, ...
@@ -29,9 +33,9 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     handles.output = hObject;
     
     % preset some important flags
-    handles.clickToMagnify = true;
+    handles.clickToMagnify = false;
     handles.maskmode = false;
-    handles.pixelmode = false;
+    handles.pixelmode = true;
     handles.plotDetail.showAnatomy = true;
     
     % have the details in handles for easy access
@@ -61,8 +65,8 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     ctmIcon_on = imread('avgPixIcon_ctm_on.png'); handles.ctmIcon_on = imresize(ctmIcon_on, [40 40]);
     mmIcon_on  = imread('avgPixIcon_mm_on.png');  handles.mmIcon_on  = imresize(mmIcon_on, [40 40]);
     
-    set(handles.tbutton_pixelSelect,'CData',handles.pixIcon);
-    set(handles.tbutton_clickToMagnify,'CData',handles.ctmIcon_on);
+    set(handles.tbutton_pixelSelect,'CData',handles.pixIcon_on);
+    set(handles.tbutton_clickToMagnify,'CData',handles.ctmIcon);
     set(handles.tbutton_maskmode,'CData',handles.mmIcon);
     
     twIcon  = imread('avgPixIcon_tw.png');  handles.twIcon  = imresize(twIcon, [40 40]);
@@ -70,6 +74,19 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     
     % gui changes -> button icons
     % functional axis buttons
+    maskAddIcon = imread('avgPixIcon_pix.png'); handles.maskAddIcon = imresize(maskAddIcon, [40 40]);
+    maskRemoveIcon = imread('avgPixIcon_ctm.png'); handles.maskRemoveIcon = imresize(maskRemoveIcon, [40 40]);
+    maskModifyIcon  = imread('avgPixIcon_mm.png');  handles.maskModifyIcon  = imresize(maskModifyIcon, [40 40]);
+    maskGroupLoadIcon = imread('avgPixIcon_pix.png'); handles.maskGroupLoadIcon = imresize(maskGroupLoadIcon, [40 40]);
+    maskGroupMoveIcon = imread('avgPixIcon_ctm.png'); handles.maskGroupMoveIcon = imresize(maskGroupMoveIcon, [40 40]);
+    maskGroupSaveIcon  = imread('avgPixIcon_mm.png');  handles.maskGroupSaveIcon  = imresize(maskGroupSaveIcon, [40 40]);
+    
+    set(handles.button_mask_add,'CData',handles.maskAddIcon);
+    set(handles.button_mask_remove,'CData',handles.maskRemoveIcon);
+    set(handles.button_mask_modify,'CData',handles.maskModifyIcon);
+    set(handles.button_maskGroup_load,'CData',handles.maskGroupLoadIcon);
+    set(handles.button_maskGroup_move,'CData',handles.maskGroupMoveIcon);
+    set(handles.button_maskGroup_save,'CData',handles.maskGroupSaveIcon);
     
     
     % gui changes -> masks
@@ -185,10 +202,20 @@ function varargout = avgPixGui_OutputFcn(~, ~, handles)
 
 % Get default command line output from handles structure
 varargout{1} = handles.output;    
-    
+
+% =========================================================================
+% ========================= CORE CALLBACKS DONE ===========================
+% =========================================================================
+
 % =========================================================================
 % ========================== TOOLBAR CALLBACKS ============================
 % =========================================================================
+
+% TODO: handle zoom in and out from toolbar
+function uitoggletool_zoomIn_ClickedCallback(hObject, ~, handles)
+
+% TODO: handle zoom in and out from toolbar
+function uitoggletool_zoomOut_ClickedCallback(hObject, ~, handles)
 
 function uipushtool_open_ClickedCallback(hObject, ~, handles)
     global exptDetail
@@ -251,16 +278,6 @@ function uipushtool_save_ClickedCallback(~, ~, handles)
         delete(h);
         msgbox('Data saved.','Save Data','none');
     end
-
-function uitoggletool_zoomIn_ClickedCallback(hObject, ~, handles)
-% hObject    handle to uitoggletool_zoomIn (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-function uitoggletool_zoomOut_ClickedCallback(hObject, ~, handles)
-% hObject    handle to uitoggletool_zoomOut (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
 
 % =========================================================================
 % ======================= TOOLBAR CALLBACKS DONE ==========================
@@ -492,24 +509,105 @@ round(get(hObject,'Value'))
 % ======================== FUNCTIONAL AXIS BUTTONS ========================
 % =========================================================================
 
+% Individual mask manipulation ============================================
+
 function button_mask_add_Callback(hObject, ~, handles)
+
 
 function button_mask_remove_Callback(hObject, ~, handles)
 
 function button_mask_modify_Callback(hObject, ~, handles)
 
+
+% Mask group manipulation =================================================
+
+function button_maskGroup_load_Callback(hObject, ~, handles)
+
 function button_maskGroup_move_Callback(hObject, ~, handles)
+
+function button_maskGroup_save_Callback(hObject, ~, handles)
 
 % =========================================================================
 % ==================== FUNCTIONAL AXIS BUTTONS DONE =======================
 % =========================================================================
 
 % =========================================================================
-% ================== CLICK TO MAGNIFY =====================================
+% =========================== MASK CONTEXT MENU ===========================
 % =========================================================================
 
-% this function also does pixel tuning selection and mask creation etc.
-% it also detects clicks on the tuning axis and displays tc for that condition
+% TODO: Either add context menu for each mask or add context menu for the
+%       axis but set enabled based on maskmode
+% TODO: Handle callbacks from mask context menu
+function contextMenu_mask_Callback(hObject, ~, handles)
+% hObject    handle to contextMenu_mask (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% TODO: Handle callbacks from mask context menu
+function contextMenu_mask_modify_Callback(hObject, ~, handles)
+% hObject    handle to contextMenu_mask_modify (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% TODO: Handle callbacks from mask context menu
+function contextMenu_mask_remove_Callback(hObject, ~, handles)
+% hObject    handle to contextMenu_mask_remove (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% =========================================================================
+% ========================= MASK CONTEXT MENU DONE ========================
+% =========================================================================
+
+% =========================================================================
+% ====================== CLICK TO MAGNIFY HELPERS =========================
+% =========================================================================    
+    
+function figure1_KeyPressFcn(hObject, ~, handles)
+    if handles.clickToMagnify
+        H = get(hObject,'UserData');
+        if ~isempty(H)
+            f1 = H(1); a1 = H(2); a2 = H(3);
+            if (strcmp(get(f1,'CurrentCharacter'),'+') || strcmp(get(f1,'CurrentCharacter'),'='))
+                handles.clickToMagnifyData(1) = handles.clickToMagnifyData(1)*1.2;
+            elseif (strcmp(get(f1,'CurrentCharacter'),'-') || strcmp(get(f1,'CurrentCharacter'),'_'))
+                handles.clickToMagnifyData(1) = handles.clickToMagnifyData(1)/1.2;
+            elseif (strcmp(get(f1,'CurrentCharacter'),'<') || strcmp(get(f1,'CurrentCharacter'),','))
+                handles.clickToMagnifyData(2) = handles.clickToMagnifyData(2)/1.2;
+            elseif (strcmp(get(f1,'CurrentCharacter'),'>') || strcmp(get(f1,'CurrentCharacter'),'.'))
+                handles.clickToMagnifyData(2) = handles.clickToMagnifyData(2)*1.2;
+            end;
+            set(a2,'UserData',handles.clickToMagnifyData);
+            figure1_WindowButtonMotionFcn(hObject,[],handles);
+        end
+    end
+    guidata(hObject, handles);
+
+function [pointerFig, pointerAxis] = pointer2d(hFig,hAxis)
+    set(hFig,'Units','pixels');
+    set(hAxis,'Units','normalized');
+
+    pointer_pos = get(0,'PointerLocation');	%pixels {0,0} lower left
+    fig_pos = get(hFig,'Position');	%pixels {l,b,w,h}
+
+    pointerFig = pointer_pos - fig_pos([1,2]);
+    set(hFig,'CurrentPoint',pointerFig);
+
+    if isempty(hAxis)
+        pointerAxis = [];
+    elseif nargout == 2
+        axes_pointer_line = get(hAxis,'CurrentPoint');
+        pointerAxis = sum(axes_pointer_line)/2;
+    end
+    
+% =========================================================================
+% ==================== CLICK TO MAGNIFY HELPERS DONE ======================
+% =========================================================================
+
+% =========================================================================
+% ========================== PIXEL CLICKED ================================
+% =========================================================================
+
 function figure1_WindowButtonDownFcn(hObject, ~, handles) 
     mouseLoc = get(handles.axis_image,'currentpoint');
     mouseLoc = fliplr(ceil(mouseLoc(1,1:2)));  
@@ -542,12 +640,12 @@ function figure1_WindowButtonDownFcn(hObject, ~, handles)
             hPoint = plot(handles.axis_anatomy,mouseLoc(2),mouseLoc(1),'r.','markersize',20);
             handles.anatomyPointHandle = hPoint;
         
-        % handle clicks for mask mode
-        elseif handles.maskmode && ~isempty(handles.trialResp)
-            r = handles.mask.roiSize;
-            c = mouseLoc;
-            handles.mask = addMask(handles.mask,r,c);
-            showMasks(handles.mask);
+%         % handle clicks for mask mode
+%         elseif handles.maskmode && ~isempty(handles.trialResp)
+%             r = handles.mask.roiSize;
+%             c = mouseLoc;
+%             handles.mask = addMask(handles.mask,r,c);
+%             showMasks(handles.mask);
         end
     end
     
@@ -626,55 +724,9 @@ function figure1_WindowButtonUpFcn(hObject, ~, handles)
     end
     guidata(hObject, handles);
 
-function figure1_KeyPressFcn(hObject, ~, handles)
-    if handles.clickToMagnify
-        H = get(hObject,'UserData');
-        if ~isempty(H)
-            f1 = H(1); a1 = H(2); a2 = H(3);
-            if (strcmp(get(f1,'CurrentCharacter'),'+') || strcmp(get(f1,'CurrentCharacter'),'='))
-                handles.clickToMagnifyData(1) = handles.clickToMagnifyData(1)*1.2;
-            elseif (strcmp(get(f1,'CurrentCharacter'),'-') || strcmp(get(f1,'CurrentCharacter'),'_'))
-                handles.clickToMagnifyData(1) = handles.clickToMagnifyData(1)/1.2;
-            elseif (strcmp(get(f1,'CurrentCharacter'),'<') || strcmp(get(f1,'CurrentCharacter'),','))
-                handles.clickToMagnifyData(2) = handles.clickToMagnifyData(2)/1.2;
-            elseif (strcmp(get(f1,'CurrentCharacter'),'>') || strcmp(get(f1,'CurrentCharacter'),'.'))
-                handles.clickToMagnifyData(2) = handles.clickToMagnifyData(2)*1.2;
-            end;
-            set(a2,'UserData',handles.clickToMagnifyData);
-            figure1_WindowButtonMotionFcn(hObject,[],handles);
-        end
-    end
-    guidata(hObject, handles);
-
-function [fig_pointer_pos, axes_pointer_val] = pointer2d(fig_hndl,axes_hndl)
-    set(fig_hndl,'Units','pixels');
-    set(axes_hndl,'Units','normalized');
-
-    pointer_pos = get(0,'PointerLocation');	%pixels {0,0} lower left
-    fig_pos = get(fig_hndl,'Position');	%pixels {l,b,w,h}
-
-    fig_pointer_pos = pointer_pos - fig_pos([1,2]);
-    set(fig_hndl,'CurrentPoint',fig_pointer_pos);
-
-    if isempty(axes_hndl)
-        axes_pointer_val = [];
-    elseif nargout == 2
-        axes_pointer_line = get(axes_hndl,'CurrentPoint');
-        axes_pointer_val = sum(axes_pointer_line)/2;
-    end
-    
-% =========================================================================
-% ================== CLICK TO MAGNIFY DONE ================================
-% =========================================================================
-
-% =========================================================================
-% ========================== PIXEL CLICKED ================================
-% =========================================================================
-    
 % =========================================================================
 % ========================== PIXEL CLICKED DONE ===========================
 % =========================================================================
-
 
 % =========================================================================
 % ============================== CREATEFNs ================================
@@ -848,28 +900,3 @@ function showMasks(mask)
 % =========================================================================
 % ======================= HELPER FUNCTIONS DONE ===========================
 % =========================================================================
-
-
-% --------------------------------------------------------------------
-function contextMenu_mask_Callback(hObject, eventdata, handles)
-% hObject    handle to contextMenu_mask (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-
-% --------------------------------------------------------------------
-function contextMenu_mask_modify_Callback(hObject, eventdata, handles)
-% hObject    handle to contextMenu_mask_modify (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-
-% --------------------------------------------------------------------
-function contextMenu_mask_remove_Callback(hObject, eventdata, handles)
-% hObject    handle to contextMenu_mask_remove (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-
-
-
