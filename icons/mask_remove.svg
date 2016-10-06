@@ -16,8 +16,8 @@
    id="svg2"
    version="1.1"
    inkscape:version="0.91 r13725"
-   sodipodi:docname="mm.svg"
-   inkscape:export-filename="Z:\Ramanujan\figuresStagingArea\icons\avgPixIcon_mm.png"
+   sodipodi:docname="mask_remove.svg"
+   inkscape:export-filename="Z:\Ramanujan\figuresStagingArea\icons\avgPixIcon_mask_remove_on.png"
    inkscape:export-xdpi="200"
    inkscape:export-ydpi="200">
   <defs
@@ -30,16 +30,16 @@
      inkscape:pageopacity="1"
      inkscape:pageshadow="2"
      inkscape:zoom="0.98994949"
-     inkscape:cx="-97.579358"
+     inkscape:cx="-27.373756"
      inkscape:cy="182.12518"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
      borderlayer="false"
      inkscape:showpageshadow="false"
-     inkscape:window-width="1600"
-     inkscape:window-height="847"
-     inkscape:window-x="1672"
+     inkscape:window-width="1680"
+     inkscape:window-height="997"
+     inkscape:window-x="-8"
      inkscape:window-y="-8"
      inkscape:window-maximized="1"
      units="px" />
@@ -73,8 +73,8 @@
        id="rect4135"
        width="354.33072"
        height="354.33072"
-       x="-446.48743"
-       y="683.88934" />
+       x="-473.76154"
+       y="690.96045" />
     <ellipse
        style="color:#000000;clip-rule:nonzero;display:inline;overflow:visible;visibility:visible;opacity:1;isolation:auto;mix-blend-mode:normal;color-interpolation:sRGB;color-interpolation-filters:linearRGB;solid-color:#000000;solid-opacity:1;fill:#0000ff;fill-opacity:0.33488375;fill-rule:evenodd;stroke:#0000ff;stroke-width:15;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:0.6511628;color-rendering:auto;image-rendering:auto;shape-rendering:auto;text-rendering:auto;enable-background:accumulate"
        id="path4684"
@@ -89,5 +89,10 @@
        height="343.83633"
        x="5.2471924"
        y="703.27869" />
+    <path
+       style="fill:none;fill-rule:evenodd;stroke:#ff0000;stroke-width:30;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
+       d="m 323.13241,946.9177 -146.47212,0"
+       id="path4137-8"
+       inkscape:connector-curvature="0" />
   </g>
 </svg>
