@@ -76,13 +76,14 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     % functional axis buttons
     maskAddIcon = imread('avgPixIcon_mask_add.png'); handles.maskAddIcon = imresize(maskAddIcon, [40 40]);
     maskRemoveIcon = imread('avgPixIcon_mask_remove.png'); handles.maskRemoveIcon = imresize(maskRemoveIcon, [40 40]);
+    maskRemoveIcon_on = imread('avgPixIcon_mask_remove_on.png'); handles.maskRemoveIcon_on = imresize(maskRemoveIcon_on, [40 40]);
     maskModifyIcon  = imread('avgPixIcon_mask_modify.png');  handles.maskModifyIcon  = imresize(maskModifyIcon, [40 40]);
     maskGroupLoadIcon = imread('avgPixIcon_maskGroup_load.png'); handles.maskGroupLoadIcon = imresize(maskGroupLoadIcon, [40 40]);
     maskGroupMoveIcon = imread('avgPixIcon_maskGroup_move.png'); handles.maskGroupMoveIcon = imresize(maskGroupMoveIcon, [40 40]);
     maskGroupSaveIcon  = imread('avgPixIcon_maskGroup_save.png');  handles.maskGroupSaveIcon  = imresize(maskGroupSaveIcon, [40 40]);
     
     set(handles.button_mask_add,'CData',handles.maskAddIcon);
-    set(handles.button_mask_remove,'CData',handles.maskRemoveIcon);
+    set(handles.tbutton_mask_remove,'CData',handles.maskRemoveIcon);
     set(handles.button_mask_modify,'CData',handles.maskModifyIcon);
     set(handles.button_maskGroup_load,'CData',handles.maskGroupLoadIcon);
     set(handles.button_maskGroup_move,'CData',handles.maskGroupMoveIcon);
@@ -98,6 +99,7 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
         handles.mask.maskImage = zeros(512,796); % hack;
     end
     handles.mask = enableMaskMode(handles.maskmode,handles);
+    handles.mask.maskRemoveMode = false;
     
     handles.clickToMagnifyData = [4,0.08];
     handles.buttonDownOnAxis = false;
@@ -427,7 +429,7 @@ function tbutton_pixelSelect_Callback(hObject, ~, handles)
         set(handles.tbutton_clickToMagnify,'CData',handles.ctmIcon);
         set(handles.tbutton_maskmode,'CData',handles.mmIcon);
     end
-    handles.mask = enableMaskMode(handles.maskmode,hObject,handles);
+    handles.mask = enableMaskMode(handles.maskmode,handles);
     guidata(hObject, handles);
 
 function button_adjustTimeWindows_Callback(hObject, ~, handles)
@@ -533,9 +535,13 @@ function button_mask_add_Callback(hObject, ~, handles)
     
     guidata(hObject, handles);
 
-function button_mask_remove_Callback(hObject, ~, handles)
-
-    handles.mask = updateMaskLayer(handles.mask,handles.maskmode,handles.axis_image,handles.axis_anatomy);
+function tbutton_mask_remove_Callback(hObject, ~, handles)
+    handles.mask.maskRemoveMode = ~handles.mask.maskRemoveMode;
+    if handles.mask.maskRemoveMode
+        set(handles.tbutton_mask_remove,'CData',handles.maskRemoveIcon_on);
+    else
+        set(handles.tbutton_mask_remove,'CData',handles.maskRemoveIcon);
+    end
     guidata(hObject, handles);
 
 function button_mask_modify_Callback(hObject, ~, handles)
@@ -585,72 +591,102 @@ function contextMenu_mask_remove_Callback(hObject, ~, handles)
 % ========================== PIXEL CLICKED ================================
 % =========================================================================
 
-function figure1_WindowButtonDownFcn(hObject, ~, handles) 
-    mouseLoc = get(handles.axis_image,'currentpoint');
-    mouseLoc = fliplr(ceil(mouseLoc(1,1:2)));  
-    if mouseLoc(1) < handles.imagingDetail.imageSize(1) && ...
-       mouseLoc(2) < handles.imagingDetail.imageSize(2) && ...
-       mouseLoc(1) > 0 && ...
-       mouseLoc(2) > 0
+function figure1_WindowButtonDownFcn(hObject, ~, handles)
+    showAnatomyCrosshair = false;
+    
+    mouseLoc_func = get(handles.axis_image,'currentpoint');
+    mouseLoc_func = fliplr(ceil(mouseLoc_func(1,1:2)));
+    mouseLoc_anat = get(handles.axis_anatomy,'currentpoint');
+    mouseLoc_anat = fliplr(ceil(mouseLoc_anat(1,1:2)));
+    
+    % check if click was on hFunc
+    if mouseLoc_func(1) < handles.imagingDetail.imageSize(1) && ...
+       mouseLoc_func(2) < handles.imagingDetail.imageSize(2) && ...
+       mouseLoc_func(1) > 0 && ...
+       mouseLoc_func(2) > 0
         handles.buttonDownOnAxis = true;
-        handles.selectedPixel = mouseLoc;
-        % handle magnify
-        if handles.clickToMagnify
-            f1 = hObject;
-            a1 = handles.axis_image;
-            a2 = copyobj(a1,f1);
+        handles.selectedPixel = mouseLoc_func;
+        handleClickedOn = handles.axis_image;
+        showAnatomyCrosshair = true;
+    % check if click was on hAnat
+    elseif mouseLoc_anat(1) < handles.imagingDetail.imageSize(1) && ...
+           mouseLoc_anat(2) < handles.imagingDetail.imageSize(2) && ...
+           mouseLoc_anat(1) > 0 && ...
+           mouseLoc_anat(2) > 0
+        handles.buttonDownOnAxis = true;
+        handles.selectedPixel = mouseLoc_anat;
+        handleClickedOn = handles.axis_anatomy;
+    end
+    
+    % handle magnify
+    if handles.clickToMagnify && handles.buttonDownOnAxis
+        f1 = hObject;
+        a1 = handleClickedOn;
+        a2 = copyobj(a1,f1);
 
-            set(f1,'UserData',[f1,a1,a2],'CurrentAxes',a2);
-            set(a2,'Color',get(a1,'Color'),'xtick',[],'ytick',[],'Box','on');
-            xlabel(''); ylabel(''); zlabel(''); title('');
-            set(a1,'Color',get(a1,'Color')*0.95);
-            figure1_WindowButtonMotionFcn(hObject,[],handles);
-            
-        % handle pixel tuning selection
-        elseif handles.pixelmode && ~isempty(handles.trialResp)
-            plotTuning(mouseLoc,handles.trialResp,handles.plotDetail,...
-                handles.trialDetail,handles.imagingDetail,handles.timeWindows,...
-                handles.axis_tc,handles.axis_tuning)
+        set(f1,'UserData',[f1,a1,a2],'CurrentAxes',a2);
+        set(a2,'Color',get(a1,'Color'),'xtick',[],'ytick',[],'Box','on');
+        xlabel(''); ylabel(''); zlabel(''); title('');
+        set(a1,'Color',get(a1,'Color')*0.95);
+        figure1_WindowButtonMotionFcn(hObject,[],handles);
+
+    % handle pixel tuning selection
+    elseif handles.pixelmode && ~isempty(handles.trialResp) && handles.buttonDownOnAxis
+        plotTuning(handles.selectedPixel,handles.trialResp,handles.plotDetail,...
+            handles.trialDetail,handles.imagingDetail,handles.timeWindows,...
+            handles.axis_tc,handles.axis_tuning)
+        if showAnatomyCrosshair
             if isfield(handles,'anatomyPointHandle') && ~isempty(handles.anatomyPointHandle) 
                 delete(handles.anatomyPointHandle);
             end
             hold(handles.axis_anatomy,'on');
-            hPoint = plot(handles.axis_anatomy,mouseLoc(2),mouseLoc(1),'r+','markersize',20);
+            hPoint = plot(handles.axis_anatomy,handles.selectedPixel(2),handles.selectedPixel(1),'r+','markersize',20);
             hold(handles.axis_anatomy,'off');
             handles.anatomyPointHandle = hPoint;
-        
-%         % handle clicks for mask mode
-%         elseif handles.maskmode && ~isempty(handles.trialResp)
-%             r = handles.mask.roiSize;
-%             c = mouseLoc;
-%             handles.mask = addMask(handles.mask,r,c);
-%             showMasks(handles.mask);
         end
     end
     
+    
     % tuning axis clicks
-    mouseLoc = get(handles.axis_tuning,'currentpoint');
+    mouseLoc_tuning = get(handles.axis_tuning,'currentpoint');
     if handles.dataLoaded
         if isfield(handles.plotDetail,'param1val') && ...
-            mouseLoc(1,1) < max(handles.plotDetail.param1val) && ...
-            mouseLoc(1,1) > min(handles.plotDetail.param1val) && ...
-            mouseLoc(1,2) < max(get(handles.axis_tuning,'ylim')) && ...
-            mouseLoc(1,2) > min(get(handles.axis_tuning,'ylim'))
-            [~,selectedCondInd] = min(abs(handles.plotDetail.param1val - mouseLoc(1)));
+            mouseLoc_tuning(1,1) < max(handles.plotDetail.param1val) && ...
+            mouseLoc_tuning(1,1) > min(handles.plotDetail.param1val) && ...
+            mouseLoc_tuning(1,2) < max(get(handles.axis_tuning,'ylim')) && ...
+            mouseLoc_tuning(1,2) > min(get(handles.axis_tuning,'ylim'))
+            [~,selectedCondInd] = min(abs(handles.plotDetail.param1val - mouseLoc_tuning(1)));
             plotTimecoursePerCondition(handles.selectedPixel,selectedCondInd,handles.plotDetail,handles.trialDetail,handles.imagingDetail,handles.timeWindows,handles.axis_tc);
         end
     end
     guidata(hObject, handles);
 
 function figure1_WindowButtonMotionFcn(hObject, ~, handles)
-    mouseLoc = get(handles.axis_image,'currentpoint');
-    mouseLoc = fliplr(ceil(mouseLoc(1,1:2)));  
-    if mouseLoc(1) < handles.imagingDetail.imageSize(1) && ...
-       mouseLoc(2) < handles.imagingDetail.imageSize(2) && ...
-       mouseLoc(1) > 0 && ...
-       mouseLoc(2) > 0
-        if handles.buttonDownOnAxis; handles.selectedPixel = mouseLoc; end
-        if handles.clickToMagnify
+    if handles.buttonDownOnAxis
+        showAnatomyCrosshair = false;    
+        mouseLoc_func = get(handles.axis_image,'currentpoint');
+        mouseLoc_func = fliplr(ceil(mouseLoc_func(1,1:2)));  
+        mouseLoc_anat = get(handles.axis_anatomy,'currentpoint');
+        mouseLoc_anat = fliplr(ceil(mouseLoc_anat(1,1:2)));
+
+        % check if click was on hFunc
+        if mouseLoc_func(1) < handles.imagingDetail.imageSize(1) && ...
+           mouseLoc_func(2) < handles.imagingDetail.imageSize(2) && ...
+           mouseLoc_func(1) > 0 && ...
+           mouseLoc_func(2) > 0
+            handles.selectedPixel = mouseLoc_func;
+            showAnatomyCrosshair = true;
+            
+        % check if click was on hAnat
+        elseif mouseLoc_anat(1) < handles.imagingDetail.imageSize(1) && ...
+               mouseLoc_anat(2) < handles.imagingDetail.imageSize(2) && ...
+               mouseLoc_anat(1) > 0 && ...
+               mouseLoc_anat(2) > 0
+
+            handles.selectedPixel = mouseLoc_anat;
+        end
+
+        if handles.clickToMagnify && handles.buttonDownOnAxis
             H = get(hObject,'UserData');
             if ~isempty(H)
                 f1 = H(1); a1 = H(2); a2 = H(3);
@@ -667,41 +703,36 @@ function figure1_WindowButtonMotionFcn(hObject, ~, handles)
                 set(a2,'YLim',a1_cp(2)+(1/a2_param(1))*(a2_pos(4)/a1_pos(4))*diff(get(a1,'YLim'))*[-0.5 0.5]);
             end
         elseif handles.pixelmode && handles.buttonDownOnAxis && ~isempty(handles.trialResp)
-            plotTuning(mouseLoc,handles.trialResp,handles.plotDetail,...
+            plotTuning(handles.selectedPixel,handles.trialResp,handles.plotDetail,...
                 handles.trialDetail,handles.imagingDetail,handles.timeWindows,...
                 handles.axis_tc,handles.axis_tuning)
-            if isfield(handles,'anatomyPointHandle') && ~isempty(handles.anatomyPointHandle) 
-                delete(handles.anatomyPointHandle);
+            if showAnatomyCrosshair
+                if isfield(handles,'anatomyPointHandle') && ~isempty(handles.anatomyPointHandle) 
+                    delete(handles.anatomyPointHandle);
+                end
+                hold(handles.axis_anatomy,'on');
+                hPoint = plot(handles.axis_anatomy,mouseLoc_func(2),mouseLoc_func(1),'r+','markersize',20);
+                hold(handles.axis_anatomy,'off');
+                handles.anatomyPointHandle = hPoint;
             end
-            hold(handles.axis_anatomy,'on');
-            hPoint = plot(handles.axis_anatomy,mouseLoc(2),mouseLoc(1),'r+','markersize',20);
-            hold(handles.axis_anatomy,'off');
-            handles.anatomyPointHandle = hPoint;
+        end
+
+        guidata(hObject, handles);
+    end
+
+function figure1_WindowButtonUpFcn(hObject, ~, handles)
+    handles.buttonDownOnAxis = false;
+    if handles.clickToMagnify
+        H = get(hObject,'UserData');
+        f1 = H(1); a1 = H(2); a2 = H(3);
+        set(a1,'Color',get(a2,'Color'));
+        set(f1,'UserData',[],'Pointer','arrow','CurrentAxes',a1);
+        if ~strcmp(get(f1,'SelectionType'),'alt'),
+          delete(a2);
         end
     end
-    guidata(hObject, handles);
-
-function figure1_WindowButtonUpFcn(hObject, ~, handles) 
-    mouseLoc = get(handles.axis_image,'currentpoint');
-    mouseLoc = fliplr(ceil(mouseLoc(1,1:2)));  
-    if mouseLoc(1) < handles.imagingDetail.imageSize(1) && ...
-       mouseLoc(2) < handles.imagingDetail.imageSize(2) && ...
-       mouseLoc(1) > 0 && ...
-       mouseLoc(2) > 0
-        handles.selectedPixel = mouseLoc;
-        handles.buttonDownOnAxis = false;
-        if handles.clickToMagnify
-            H = get(hObject,'UserData');
-            f1 = H(1); a1 = H(2); a2 = H(3);
-            set(a1,'Color',get(a2,'Color'));
-            set(f1,'UserData',[],'Pointer','arrow','CurrentAxes',a1);
-            if ~strcmp(get(f1,'SelectionType'),'alt'),
-              delete(a2);
-            end
-        end
-        if isfield(handles,'anatomyPointHandle') && ~isempty(handles.anatomyPointHandle) 
-            delete(handles.anatomyPointHandle);
-        end
+    if isfield(handles,'anatomyPointHandle') && ~isempty(handles.anatomyPointHandle) 
+        delete(handles.anatomyPointHandle);
     end
     guidata(hObject, handles);
 
@@ -899,7 +930,7 @@ function handles = updateTimeWindowsAndReplot(handles,respFrames)
 function mask = enableMaskMode(enabled,handles)
     if enabled; enabledStr = 'on'; else enabledStr = 'off'; end
     set(handles.button_mask_add,'enable',enabledStr);
-    set(handles.button_mask_remove,'enable',enabledStr);
+    set(handles.tbutton_mask_remove,'enable',enabledStr);
     set(handles.button_mask_modify,'enable',enabledStr);
     set(handles.button_maskGroup_load,'enable',enabledStr);
     set(handles.button_maskGroup_move,'enable',enabledStr);
@@ -951,3 +982,4 @@ function mask = updateMaskLayer(mask,maskmode,hFunc,hAnat)
 % =========================================================================
 % ======================= HELPER FUNCTIONS DONE ===========================
 % =========================================================================
+
