@@ -74,12 +74,12 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     
     % gui changes -> button icons
     % functional axis buttons
-    maskAddIcon = imread('avgPixIcon_pix.png'); handles.maskAddIcon = imresize(maskAddIcon, [40 40]);
-    maskRemoveIcon = imread('avgPixIcon_ctm.png'); handles.maskRemoveIcon = imresize(maskRemoveIcon, [40 40]);
-    maskModifyIcon  = imread('avgPixIcon_mm.png');  handles.maskModifyIcon  = imresize(maskModifyIcon, [40 40]);
-    maskGroupLoadIcon = imread('avgPixIcon_pix.png'); handles.maskGroupLoadIcon = imresize(maskGroupLoadIcon, [40 40]);
-    maskGroupMoveIcon = imread('avgPixIcon_ctm.png'); handles.maskGroupMoveIcon = imresize(maskGroupMoveIcon, [40 40]);
-    maskGroupSaveIcon  = imread('avgPixIcon_mm.png');  handles.maskGroupSaveIcon  = imresize(maskGroupSaveIcon, [40 40]);
+    maskAddIcon = imread('avgPixIcon_mask_add.png'); handles.maskAddIcon = imresize(maskAddIcon, [40 40]);
+    maskRemoveIcon = imread('avgPixIcon_mask_remove.png'); handles.maskRemoveIcon = imresize(maskRemoveIcon, [40 40]);
+    maskModifyIcon  = imread('avgPixIcon_mask_modify.png');  handles.maskModifyIcon  = imresize(maskModifyIcon, [40 40]);
+    maskGroupLoadIcon = imread('avgPixIcon_maskGroup_load.png'); handles.maskGroupLoadIcon = imresize(maskGroupLoadIcon, [40 40]);
+    maskGroupMoveIcon = imread('avgPixIcon_maskGroup_move.png'); handles.maskGroupMoveIcon = imresize(maskGroupMoveIcon, [40 40]);
+    maskGroupSaveIcon  = imread('avgPixIcon_maskGroup_save.png');  handles.maskGroupSaveIcon  = imresize(maskGroupSaveIcon, [40 40]);
     
     set(handles.button_mask_add,'CData',handles.maskAddIcon);
     set(handles.button_mask_remove,'CData',handles.maskRemoveIcon);
@@ -88,15 +88,16 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     set(handles.button_maskGroup_move,'CData',handles.maskGroupMoveIcon);
     set(handles.button_maskGroup_save,'CData',handles.maskGroupSaveIcon);
     
-    
     % gui changes -> masks
     handles.mask.roiCount = 0;
-    handles.mask.maskLayerHandle = [];
+    handles.mask.maskLayerHandles = [];
+    handles.mask.selectedMaskNum = 0;
     if ~isempty(handles.imagingDetail)
         handles.mask.maskImage = zeros(handles.imagingDetail.imageSize);
     else
         handles.mask.maskImage = zeros(512,796); % hack;
     end
+    handles.mask = enableMaskMode(handles.maskmode,handles);
     
     handles.clickToMagnifyData = [4,0.08];
     handles.buttonDownOnAxis = false;
@@ -167,14 +168,13 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     % get mean image
     if ~isempty(handles.pixelTuning)
         [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
-        plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
+        handles.plotDetail.funcImage = plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
         handles.plotDetail.anatomy = getAnatomy;
         
         cla(handles.axis_anatomy);
         if handles.plotDetail.showAnatomy        
             imagesc(handles.plotDetail.anatomy,'parent',handles.axis_anatomy);
             colormap(handles.axis_anatomy,'gray')
-            hold(handles.axis_anatomy,'on')
         end
     else
         handles.plotDetail.param1val = [];
@@ -305,7 +305,7 @@ function checkbox_circular_Callback(hObject, ~, handles)
     % get mean image
     if ~isempty(handles.pixelTuning)
         [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
-        plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
+        handles.plotDetail.funcImage = plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
     end
     guidata(hObject, handles);
     
@@ -320,7 +320,7 @@ function checkbox_modulo_Callback(hObject, ~, handles)
     % get mean image
     if ~isempty(handles.pixelTuning)
         [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
-        plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
+        handles.plotDetail.funcImage = plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
     end
     guidata(hObject, handles);
 
@@ -330,7 +330,7 @@ function textbox_moduloValue_Callback(hObject, ~, handles)
     % get mean image
     if ~isempty(handles.pixelTuning)
         [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
-        plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
+        handles.plotDetail.funcImage = plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
     end
     guidata(hObject, handles);
 
@@ -343,7 +343,7 @@ function radiobutton_mean_Callback(hObject, ~, handles)
     % get mean image
     if ~isempty(handles.pixelTuning)
         [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
-        plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
+        handles.plotDetail.funcImage = plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
     end
     guidata(hObject, handles);
     
@@ -356,7 +356,7 @@ function radiobutton_all_Callback(hObject, ~, handles)
     % get mean image
     if ~isempty(handles.pixelTuning)
         [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
-        plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
+        handles.plotDetail.funcImage = plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
     end
     guidata(hObject, handles);
     
@@ -371,7 +371,7 @@ function radiobutton_value_Callback(hObject, ~, handles)
     % get mean image
     if ~isempty(handles.pixelTuning)
         [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
-        plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
+        handles.plotDetail.funcImage = plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
     end
     guidata(hObject, handles);
 
@@ -382,7 +382,7 @@ function pulldown_param2Value_Callback(hObject, ~, handles)
     % get mean image
     if ~isempty(handles.pixelTuning)
         [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
-        plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
+        handles.plotDetail.funcImage = plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
     end
     guidata(hObject, handles);
     
@@ -397,38 +397,37 @@ function pulldown_param2Value_Callback(hObject, ~, handles)
 function tbutton_maskmode_Callback(hObject, ~, handles)
     handles.maskmode = ~handles.maskmode;
     if handles.maskmode
-        handles.clickToMagnify = 0;
-        handles.pixelmode = 0;
-%         showMask;
+        handles.clickToMagnify = false;
+        handles.pixelmode = false;
         set(handles.tbutton_pixelSelect,'CData',handles.pixIcon);
         set(handles.tbutton_clickToMagnify,'CData',handles.ctmIcon);
         set(handles.tbutton_maskmode,'CData',handles.mmIcon_on);
-    else
-        set(handles.slider_maskSize,'enable','off');
-%         hideMask;
     end
+    handles.mask = enableMaskMode(handles.maskmode,handles);
     guidata(hObject, handles);
 
 function tbutton_clickToMagnify_Callback(hObject, ~, handles)
     handles.clickToMagnify = ~handles.clickToMagnify;
     if handles.clickToMagnify
-        handles.maskmode = 0;
-        handles.pixelmode = 0;
+        handles.maskmode = false;
+        handles.pixelmode = false;
         set(handles.tbutton_pixelSelect,'CData',handles.pixIcon);
         set(handles.tbutton_clickToMagnify,'CData',handles.ctmIcon_on);
         set(handles.tbutton_maskmode,'CData',handles.mmIcon);
     end
+    handles.mask = enableMaskMode(handles.maskmode,handles);
     guidata(hObject, handles);
 
 function tbutton_pixelSelect_Callback(hObject, ~, handles)
     handles.pixelmode = ~handles.pixelmode;
     if handles.pixelmode
-        handles.maskmode = 0;
-        handles.clickToMagnify = 0;
+        handles.maskmode = false;
+        handles.clickToMagnify = false;
         set(handles.tbutton_pixelSelect,'CData',handles.pixIcon_on);
         set(handles.tbutton_clickToMagnify,'CData',handles.ctmIcon);
         set(handles.tbutton_maskmode,'CData',handles.mmIcon);
     end
+    handles.mask = enableMaskMode(handles.maskmode,hObject,handles);
     guidata(hObject, handles);
 
 function button_adjustTimeWindows_Callback(hObject, ~, handles)
@@ -489,7 +488,7 @@ round(get(hObject,'Value'))
     % get mean image
     if ~isempty(handles.pixelTuning)
         [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
-        plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
+        handles.plotDetail.funcImage = plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
         handles.plotDetail.anatomy = getAnatomy;
     else
         handles.plotDetail.param1val = [];
@@ -512,16 +511,39 @@ round(get(hObject,'Value'))
 % Individual mask manipulation ============================================
 
 function button_mask_add_Callback(hObject, ~, handles)
+    % create mask
+    h = imellipse(gca); wait(h);
+    
+    % hack to get first image in the children of the handle because create
+    % mask gets confused when there are multiple images in the ancestors of
+    % the ellipse
+    for c=1:length(handles.axis_anatomy.Children)
+        if isa(handles.axis_anatomy.Children(c),'matlab.graphics.primitive.Image')
+            break;
+        end
+    end
+    newMask = createMask(h,handles.axis_anatomy.Children(c));
+    delete(h);
 
+    % add new mask to the overall struct; also select that mask
+    handles.mask = addNewMaskToStruct(handles.mask,newMask);
+    
+    % update views - this returns handles to the mask layers
+    handles.mask = updateMaskLayer(handles.mask,handles.maskmode,handles.axis_image,handles.axis_anatomy);
+    
+    guidata(hObject, handles);
 
 function button_mask_remove_Callback(hObject, ~, handles)
 
-function button_mask_modify_Callback(hObject, ~, handles)
+    handles.mask = updateMaskLayer(handles.mask,handles.maskmode,handles.axis_image,handles.axis_anatomy);
+    guidata(hObject, handles);
 
+function button_mask_modify_Callback(hObject, ~, handles)
 
 % Mask group manipulation =================================================
 
 function button_maskGroup_load_Callback(hObject, ~, handles)
+
 
 function button_maskGroup_move_Callback(hObject, ~, handles)
 
@@ -560,51 +582,6 @@ function contextMenu_mask_remove_Callback(hObject, ~, handles)
 % =========================================================================
 
 % =========================================================================
-% ====================== CLICK TO MAGNIFY HELPERS =========================
-% =========================================================================    
-    
-function figure1_KeyPressFcn(hObject, ~, handles)
-    if handles.clickToMagnify
-        H = get(hObject,'UserData');
-        if ~isempty(H)
-            f1 = H(1); a1 = H(2); a2 = H(3);
-            if (strcmp(get(f1,'CurrentCharacter'),'+') || strcmp(get(f1,'CurrentCharacter'),'='))
-                handles.clickToMagnifyData(1) = handles.clickToMagnifyData(1)*1.2;
-            elseif (strcmp(get(f1,'CurrentCharacter'),'-') || strcmp(get(f1,'CurrentCharacter'),'_'))
-                handles.clickToMagnifyData(1) = handles.clickToMagnifyData(1)/1.2;
-            elseif (strcmp(get(f1,'CurrentCharacter'),'<') || strcmp(get(f1,'CurrentCharacter'),','))
-                handles.clickToMagnifyData(2) = handles.clickToMagnifyData(2)/1.2;
-            elseif (strcmp(get(f1,'CurrentCharacter'),'>') || strcmp(get(f1,'CurrentCharacter'),'.'))
-                handles.clickToMagnifyData(2) = handles.clickToMagnifyData(2)*1.2;
-            end;
-            set(a2,'UserData',handles.clickToMagnifyData);
-            figure1_WindowButtonMotionFcn(hObject,[],handles);
-        end
-    end
-    guidata(hObject, handles);
-
-function [pointerFig, pointerAxis] = pointer2d(hFig,hAxis)
-    set(hFig,'Units','pixels');
-    set(hAxis,'Units','normalized');
-
-    pointer_pos = get(0,'PointerLocation');	%pixels {0,0} lower left
-    fig_pos = get(hFig,'Position');	%pixels {l,b,w,h}
-
-    pointerFig = pointer_pos - fig_pos([1,2]);
-    set(hFig,'CurrentPoint',pointerFig);
-
-    if isempty(hAxis)
-        pointerAxis = [];
-    elseif nargout == 2
-        axes_pointer_line = get(hAxis,'CurrentPoint');
-        pointerAxis = sum(axes_pointer_line)/2;
-    end
-    
-% =========================================================================
-% ==================== CLICK TO MAGNIFY HELPERS DONE ======================
-% =========================================================================
-
-% =========================================================================
 % ========================== PIXEL CLICKED ================================
 % =========================================================================
 
@@ -637,7 +614,9 @@ function figure1_WindowButtonDownFcn(hObject, ~, handles)
             if isfield(handles,'anatomyPointHandle') && ~isempty(handles.anatomyPointHandle) 
                 delete(handles.anatomyPointHandle);
             end
-            hPoint = plot(handles.axis_anatomy,mouseLoc(2),mouseLoc(1),'r.','markersize',20);
+            hold(handles.axis_anatomy,'on');
+            hPoint = plot(handles.axis_anatomy,mouseLoc(2),mouseLoc(1),'r+','markersize',20);
+            hold(handles.axis_anatomy,'off');
             handles.anatomyPointHandle = hPoint;
         
 %         % handle clicks for mask mode
@@ -694,7 +673,9 @@ function figure1_WindowButtonMotionFcn(hObject, ~, handles)
             if isfield(handles,'anatomyPointHandle') && ~isempty(handles.anatomyPointHandle) 
                 delete(handles.anatomyPointHandle);
             end
-            hPoint = plot(handles.axis_anatomy,mouseLoc(2),mouseLoc(1),'r.','markersize',20);
+            hold(handles.axis_anatomy,'on');
+            hPoint = plot(handles.axis_anatomy,mouseLoc(2),mouseLoc(1),'r+','markersize',20);
+            hold(handles.axis_anatomy,'off');
             handles.anatomyPointHandle = hPoint;
         end
     end
@@ -764,6 +745,51 @@ function slider_filterPx_CreateFcn(hObject, ~, ~)
 
 % =========================================================================
 % ========================= CREATEFNs DONE ================================
+% =========================================================================
+
+% =========================================================================
+% ====================== CLICK TO MAGNIFY HELPERS =========================
+% =========================================================================    
+    
+function figure1_KeyPressFcn(hObject, ~, handles)
+    if handles.clickToMagnify
+        H = get(hObject,'UserData');
+        if ~isempty(H)
+            f1 = H(1); a1 = H(2); a2 = H(3);
+            if (strcmp(get(f1,'CurrentCharacter'),'+') || strcmp(get(f1,'CurrentCharacter'),'='))
+                handles.clickToMagnifyData(1) = handles.clickToMagnifyData(1)*1.2;
+            elseif (strcmp(get(f1,'CurrentCharacter'),'-') || strcmp(get(f1,'CurrentCharacter'),'_'))
+                handles.clickToMagnifyData(1) = handles.clickToMagnifyData(1)/1.2;
+            elseif (strcmp(get(f1,'CurrentCharacter'),'<') || strcmp(get(f1,'CurrentCharacter'),','))
+                handles.clickToMagnifyData(2) = handles.clickToMagnifyData(2)/1.2;
+            elseif (strcmp(get(f1,'CurrentCharacter'),'>') || strcmp(get(f1,'CurrentCharacter'),'.'))
+                handles.clickToMagnifyData(2) = handles.clickToMagnifyData(2)*1.2;
+            end;
+            set(a2,'UserData',handles.clickToMagnifyData);
+            figure1_WindowButtonMotionFcn(hObject,[],handles);
+        end
+    end
+    guidata(hObject, handles);
+
+function [pointerFig, pointerAxis] = pointer2d(hFig,hAxis)
+    set(hFig,'Units','pixels');
+    set(hAxis,'Units','normalized');
+
+    pointer_pos = get(0,'PointerLocation');	%pixels {0,0} lower left
+    fig_pos = get(hFig,'Position');	%pixels {l,b,w,h}
+
+    pointerFig = pointer_pos - fig_pos([1,2]);
+    set(hFig,'CurrentPoint',pointerFig);
+
+    if isempty(hAxis)
+        pointerAxis = [];
+    elseif nargout == 2
+        axes_pointer_line = get(hAxis,'CurrentPoint');
+        pointerAxis = sum(axes_pointer_line)/2;
+    end
+    
+% =========================================================================
+% ==================== CLICK TO MAGNIFY HELPERS DONE ======================
 % =========================================================================
 
 % =========================================================================
@@ -860,7 +886,7 @@ function handles = updateTimeWindowsAndReplot(handles,respFrames)
         handles.plotDetail.filterPx,handles.imagingDetail.imageSize);
     handles.plotDetail.anatomy = getAnatomy;
     [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
-    plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
+    handles.plotDetail.funcImage = plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
     cla(handles.axis_anatomy);
     if handles.plotDetail.showAnatomy        
         imagesc(handles.plotDetail.anatomy,'parent',handles.axis_anatomy);
@@ -870,32 +896,57 @@ function handles = updateTimeWindowsAndReplot(handles,respFrames)
         box(handles.axis_anatomy,'on')
     end
     
-function mask = addMask(mask,r,c)
-    if ~isfield(mask,'roiList'); mask.roiList = []; end
-    mask.roiCount = mask.roiCount + 1;
-    mask.roiList(mask.roiCount).r = r;
-    mask.roiList(mask.roiCount).c = c;
-
-    x = 1:size(mask.maskImage,1);
-    y = 1:size(mask.maskImage,2);
-    [xx,yy] = meshgrid(x,y);
-
-    cellMask = hypot(xx - c(1), yy - c(2)) <= r;
-    mask.maskImage = mask.maskImage + mask.roiCount*cellMask;
-    mask.roiList(mask.roiCount).pixels = find(cellMask);
+function mask = enableMaskMode(enabled,handles)
+    if enabled; enabledStr = 'on'; else enabledStr = 'off'; end
+    set(handles.button_mask_add,'enable',enabledStr);
+    set(handles.button_mask_remove,'enable',enabledStr);
+    set(handles.button_mask_modify,'enable',enabledStr);
+    set(handles.button_maskGroup_load,'enable',enabledStr);
+    set(handles.button_maskGroup_move,'enable',enabledStr);
+    set(handles.button_maskGroup_save,'enable',enabledStr);
     
-function showMasks(mask)
-    if isempty(mask.maskLayerHandle)
-        
+    mask = updateMaskLayer(handles.mask,enabled,handles.axis_image,handles.axis_anatomy);
+    
+function maskStruct = addNewMaskToStruct(maskStruct,newMask)
+    % first mask ever?
+    if ~isfield(maskStruct,'roiList'); maskStruct.roiList = []; end
+    
+    maskStruct.roiCount = maskStruct.roiCount + 1;
+    
+    % get mask stats and save them
+    maskStats = regionprops(newMask,'Centroid','MajorAxisLength','MinorAxisLength','Orientation','PixelIdxList');
+    maskStruct.roiList(maskStruct.roiCount).Centroid = maskStats.Centroid;
+    maskStruct.roiList(maskStruct.roiCount).MajorAxisLength = maskStats.MajorAxisLength;
+    maskStruct.roiList(maskStruct.roiCount).MinorAxisLength = maskStats.MinorAxisLength;
+    maskStruct.roiList(maskStruct.roiCount).Orientation = maskStats.Orientation;
+    maskStruct.roiList(maskStruct.roiCount).PixelIdxList = maskStats.PixelIdxList;
+    
+    % add new mask to the big mask
+    maskStruct.maskImage = maskStruct.maskImage + maskStruct.roiCount*newMask;
+    
+    % select that mask
+    maskStruct.selectedMaskNum = maskStruct.roiCount;    
+
+function mask = updateMaskLayer(mask,maskmode,hFunc,hAnat)
+    if ~isempty(mask.maskLayerHandles) % && isvalid(handles.mask.maskLayerHandles(1)) && isvalid(handles.mask.maskLayerHandles(2))
+        delete(mask.maskLayerHandles(1));
+        delete(mask.maskLayerHandles(2));
+        mask.maskLayerHandles = [];
     end
-    
-    axes(handles.Image)
-    h = imellipse(gca,[min(j) min(i) max(j)-min(j) max(i)-min(i)]);
-    wait(h);
-    % Create a mask from that image
-    mask = createMask(h);
-    % Now we're done with the ellipse, delete it
-    delete(h);
+
+    if maskmode && mask.roiCount > 0 
+        bwMask = mask.maskImage > 0;
+        if mask.selectedMaskNum > 0
+            bwMask(mask.roiList(mask.selectedMaskNum).PixelIdxList) = 2;
+        end
+        
+        hold(hFunc,'on')
+        hold(hAnat,'on')
+        mask.maskLayerHandles(1) = image(0.1*ones([size(bwMask) 3]),'alphadata',32*(bwMask < 1),'alphaDatamapping','direct','parent',hFunc);
+        mask.maskLayerHandles(2) = image(0.1*ones([size(bwMask) 3]),'alphadata',32*(bwMask < 1),'alphaDatamapping','direct','parent',hAnat);
+        hold(hFunc,'off')
+        hold(hAnat,'off')
+    end
 
 % =========================================================================
 % ======================= HELPER FUNCTIONS DONE ===========================
