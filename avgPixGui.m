@@ -536,13 +536,22 @@ function button_mask_add_Callback(hObject, ~, handles)
     guidata(hObject, handles);
 
 function button_mask_remove_Callback(hObject, ~, handles)
-    handles.mask.maskRemoveMode = ~handles.mask.maskRemoveMode;
-    if handles.mask.maskRemoveMode
-        set(handles.button_mask_remove,'CData',handles.maskRemoveIcon_on);
-    else
-        set(handles.button_mask_remove,'CData',handles.maskRemoveIcon);
+    if handles.mask.selectedMaskNum > 0
+        % add new mask to the overall struct; also select that mask
+        handles.mask = removeSelectedMaskFromStruct(handles.mask);
+
+        % deleted selected mask ellipse
+        if ~isempty(handles.mask.selectedMaskEllipseHandles)
+            delete(handles.mask.selectedMaskEllipseHandles(1));
+            delete(handles.mask.selectedMaskEllipseHandles(2));
+            handles.mask.selectedMaskEllipseHandles = [];
+        end
+        
+        % update views - this returns handles to the mask layers
+        handles.mask = updateMaskLayer(handles.mask,handles.maskmode,handles.axis_image,handles.axis_anatomy);
+        
+        guidata(hObject, handles);
     end
-    guidata(hObject, handles);
 
 function button_mask_modify_Callback(hObject, ~, handles)
 
@@ -1011,21 +1020,40 @@ function maskStruct = addNewMaskToStruct(maskStruct,newMask)
     % first mask ever?
     if ~isfield(maskStruct,'roiList'); maskStruct.roiList = []; end
     
+    % increase count
     maskStruct.roiCount = maskStruct.roiCount + 1;
     
     % get mask stats and save them
     maskStats = regionprops(newMask,'Centroid','MajorAxisLength','MinorAxisLength','Orientation','PixelIdxList');
-    maskStruct.roiList(maskStruct.roiCount).Centroid = maskStats.Centroid;
+    maskStruct.roiList(maskStruct.roiCount).Centroid        = maskStats.Centroid;
     maskStruct.roiList(maskStruct.roiCount).MajorAxisLength = maskStats.MajorAxisLength;
     maskStruct.roiList(maskStruct.roiCount).MinorAxisLength = maskStats.MinorAxisLength;
-    maskStruct.roiList(maskStruct.roiCount).Orientation = maskStats.Orientation;
-    maskStruct.roiList(maskStruct.roiCount).PixelIdxList = maskStats.PixelIdxList;
+    maskStruct.roiList(maskStruct.roiCount).Orientation     = maskStats.Orientation;
+    maskStruct.roiList(maskStruct.roiCount).PixelIdxList    = maskStats.PixelIdxList;
     
     % add new mask to the big mask
     maskStruct.maskImage = maskStruct.maskImage + maskStruct.roiCount*newMask;
     
     % select that mask
     maskStruct.selectedMaskNum = maskStruct.roiCount;    
+
+function maskStruct = removeSelectedMaskFromStruct(maskStruct)
+    % remove mask from image
+    maskStruct.maskImage(maskStruct.roiList(maskStruct.selectedMaskNum).PixelIdxList) = 0;
+    
+    % renumber the mask image starting from the selected mask
+    for maskNum = 1+maskStruct.selectedMaskNum : maskStruct.roiCount
+        maskStruct.maskImage(maskStruct.roiList(maskNum).PixelIdxList) = maskNum - 1;
+    end
+    
+    % decrease count
+    maskStruct.roiCount = maskStruct.roiCount - 1;
+        
+    % remove from mask stats
+    maskStruct.roiList(maskStruct.selectedMaskNum) = [];
+    
+    % remove mask selection
+    maskStruct.selectedMaskNum = 0;    
 
 function mask = updateMaskLayer(mask,maskmode,hFunc,hAnat)
     if ~isempty(mask.maskLayerHandles)
