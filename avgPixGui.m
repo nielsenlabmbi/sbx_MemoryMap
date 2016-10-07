@@ -83,7 +83,7 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     maskGroupSaveIcon  = imread('avgPixIcon_maskGroup_save.png');  handles.maskGroupSaveIcon  = imresize(maskGroupSaveIcon, [40 40]);
     
     set(handles.button_mask_add,'CData',handles.maskAddIcon);
-    set(handles.tbutton_mask_remove,'CData',handles.maskRemoveIcon);
+    set(handles.button_mask_remove,'CData',handles.maskRemoveIcon);
     set(handles.button_mask_modify,'CData',handles.maskModifyIcon);
     set(handles.button_maskGroup_load,'CData',handles.maskGroupLoadIcon);
     set(handles.button_maskGroup_move,'CData',handles.maskGroupMoveIcon);
@@ -93,13 +93,13 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     handles.mask.roiCount = 0;
     handles.mask.maskLayerHandles = [];
     handles.mask.selectedMaskNum = 0;
+    handles.mask.selectedMaskEllipseHandles = [];
     if ~isempty(handles.imagingDetail)
         handles.mask.maskImage = zeros(handles.imagingDetail.imageSize);
     else
         handles.mask.maskImage = zeros(512,796); % hack;
     end
     handles.mask = enableMaskMode(handles.maskmode,handles);
-    handles.mask.maskRemoveMode = false;
     
     handles.clickToMagnifyData = [4,0.08];
     handles.buttonDownOnAxis = false;
@@ -535,12 +535,12 @@ function button_mask_add_Callback(hObject, ~, handles)
     
     guidata(hObject, handles);
 
-function tbutton_mask_remove_Callback(hObject, ~, handles)
+function button_mask_remove_Callback(hObject, ~, handles)
     handles.mask.maskRemoveMode = ~handles.mask.maskRemoveMode;
     if handles.mask.maskRemoveMode
-        set(handles.tbutton_mask_remove,'CData',handles.maskRemoveIcon_on);
+        set(handles.button_mask_remove,'CData',handles.maskRemoveIcon_on);
     else
-        set(handles.tbutton_mask_remove,'CData',handles.maskRemoveIcon);
+        set(handles.button_mask_remove,'CData',handles.maskRemoveIcon);
     end
     guidata(hObject, handles);
 
@@ -549,7 +549,6 @@ function button_mask_modify_Callback(hObject, ~, handles)
 % Mask group manipulation =================================================
 
 function button_maskGroup_load_Callback(hObject, ~, handles)
-
 
 function button_maskGroup_move_Callback(hObject, ~, handles)
 
@@ -634,7 +633,7 @@ function figure1_WindowButtonDownFcn(hObject, ~, handles)
     elseif handles.pixelmode && ~isempty(handles.trialResp) && handles.buttonDownOnAxis
         plotTuning(handles.selectedPixel,handles.trialResp,handles.plotDetail,...
             handles.trialDetail,handles.imagingDetail,handles.timeWindows,...
-            handles.axis_tc,handles.axis_tuning)
+            handles.axis_tc,handles.axis_tuning);
         if showAnatomyCrosshair
             if isfield(handles,'anatomyPointHandle') && ~isempty(handles.anatomyPointHandle) 
                 delete(handles.anatomyPointHandle);
@@ -644,8 +643,39 @@ function figure1_WindowButtonDownFcn(hObject, ~, handles)
             hold(handles.axis_anatomy,'off');
             handles.anatomyPointHandle = hPoint;
         end
+    % handle mask selection
+    elseif handles.maskmode && handles.buttonDownOnAxis
+        handles.mask.selectedMaskNum = handles.mask.maskImage(handles.selectedPixel(1),handles.selectedPixel(2));
+        if handles.mask.selectedMaskNum > 0
+            % plot ellipse around mask
+            currentRoi = handles.mask.roiList(handles.mask.selectedMaskNum);
+            if ceil(abs(currentRoi.Orientation)) == 90
+                w = currentRoi.MinorAxisLength;
+                h = currentRoi.MajorAxisLength;
+            else
+                h = currentRoi.MinorAxisLength;
+                w = currentRoi.MajorAxisLength;
+            end
+            x = currentRoi.Centroid(1) - round(w/2);
+            y = currentRoi.Centroid(2) - round(h/2);
+            if ~isempty(handles.mask.selectedMaskEllipseHandles)
+                delete(handles.mask.selectedMaskEllipseHandles(1));
+                delete(handles.mask.selectedMaskEllipseHandles(2));
+                handles.mask.selectedMaskEllipseHandles = [];
+            end
+            handles.mask.selectedMaskEllipseHandles(1) = ...
+                rectangle('Position',[x y w h],'Curvature',[1 1],'EdgeColor','magenta',...
+                'linewidth',2,'parent',handles.axis_image);
+            handles.mask.selectedMaskEllipseHandles(2) = ...
+                rectangle('Position',[x y w h],'Curvature',[1 1],'EdgeColor','magenta',...
+                'linewidth',2,'parent',handles.axis_anatomy);
+            
+            % plot tuning for that mask
+            plotTuning_mask(currentRoi.PixelIdxList,handles.trialResp,handles.plotDetail,...
+            handles.trialDetail,handles.imagingDetail,handles.timeWindows,...
+            handles.axis_tc,handles.axis_tuning);
+        end
     end
-    
     
     % tuning axis clicks
     mouseLoc_tuning = get(handles.axis_tuning,'currentpoint');
@@ -656,7 +686,13 @@ function figure1_WindowButtonDownFcn(hObject, ~, handles)
             mouseLoc_tuning(1,2) < max(get(handles.axis_tuning,'ylim')) && ...
             mouseLoc_tuning(1,2) > min(get(handles.axis_tuning,'ylim'))
             [~,selectedCondInd] = min(abs(handles.plotDetail.param1val - mouseLoc_tuning(1)));
-            plotTimecoursePerCondition(handles.selectedPixel,selectedCondInd,handles.plotDetail,handles.trialDetail,handles.imagingDetail,handles.timeWindows,handles.axis_tc);
+            if handles.maskmode && handles.mask.selectedMaskNum > 0
+                handles.mask.selectedMaskNum = handles.mask.maskImage(handles.selectedPixel(1),handles.selectedPixel(2));
+                currentRoi = handles.mask.roiList(handles.mask.selectedMaskNum);
+                plotTimecoursePerCondition_mask(currentRoi.PixelIdxList,selectedCondInd,handles.plotDetail,handles.trialDetail,handles.imagingDetail,handles.timeWindows,handles.axis_tc);
+            elseif handles.pixelmode
+                plotTimecoursePerCondition(handles.selectedPixel,selectedCondInd,handles.plotDetail,handles.trialDetail,handles.imagingDetail,handles.timeWindows,handles.axis_tc);
+            end
         end
     end
     guidata(hObject, handles);
@@ -714,6 +750,39 @@ function figure1_WindowButtonMotionFcn(hObject, ~, handles)
                 hPoint = plot(handles.axis_anatomy,mouseLoc_func(2),mouseLoc_func(1),'r+','markersize',20);
                 hold(handles.axis_anatomy,'off');
                 handles.anatomyPointHandle = hPoint;
+            end
+            
+        % handle mask selection
+        elseif handles.maskmode && handles.buttonDownOnAxis && ~isempty(handles.trialResp)
+            handles.mask.selectedMaskNum = handles.mask.maskImage(handles.selectedPixel(1),handles.selectedPixel(2));
+            if handles.mask.selectedMaskNum > 0
+                % plot ellipse around mask
+                currentRoi = handles.mask.roiList(handles.mask.selectedMaskNum);
+                if ceil(abs(currentRoi.Orientation)) == 90
+                    w = currentRoi.MinorAxisLength;
+                    h = currentRoi.MajorAxisLength;
+                else
+                    h = currentRoi.MinorAxisLength;
+                    w = currentRoi.MajorAxisLength;
+                end
+                x = currentRoi.Centroid(1) - round(w/2);
+                y = currentRoi.Centroid(2) - round(h/2);
+                if ~isempty(handles.mask.selectedMaskEllipseHandles)
+                    delete(handles.mask.selectedMaskEllipseHandles(1));
+                    delete(handles.mask.selectedMaskEllipseHandles(2));
+                    handles.mask.selectedMaskEllipseHandles = [];
+                end
+                handles.mask.selectedMaskEllipseHandles(1) = ...
+                    rectangle('Position',[x y w h],'Curvature',[1 1],'EdgeColor','magenta',...
+                    'linewidth',2,'parent',handles.axis_image);
+                handles.mask.selectedMaskEllipseHandles(2) = ...
+                    rectangle('Position',[x y w h],'Curvature',[1 1],'EdgeColor','magenta',...
+                    'linewidth',2,'parent',handles.axis_anatomy);
+
+                % plot tuning for that mask
+                plotTuning_mask(currentRoi.PixelIdxList,handles.trialResp,handles.plotDetail,...
+                handles.trialDetail,handles.imagingDetail,handles.timeWindows,...
+                handles.axis_tc,handles.axis_tuning);
             end
         end
 
@@ -930,7 +999,7 @@ function handles = updateTimeWindowsAndReplot(handles,respFrames)
 function mask = enableMaskMode(enabled,handles)
     if enabled; enabledStr = 'on'; else enabledStr = 'off'; end
     set(handles.button_mask_add,'enable',enabledStr);
-    set(handles.tbutton_mask_remove,'enable',enabledStr);
+    set(handles.button_mask_remove,'enable',enabledStr);
     set(handles.button_mask_modify,'enable',enabledStr);
     set(handles.button_maskGroup_load,'enable',enabledStr);
     set(handles.button_maskGroup_move,'enable',enabledStr);
@@ -959,10 +1028,16 @@ function maskStruct = addNewMaskToStruct(maskStruct,newMask)
     maskStruct.selectedMaskNum = maskStruct.roiCount;    
 
 function mask = updateMaskLayer(mask,maskmode,hFunc,hAnat)
-    if ~isempty(mask.maskLayerHandles) % && isvalid(handles.mask.maskLayerHandles(1)) && isvalid(handles.mask.maskLayerHandles(2))
+    if ~isempty(mask.maskLayerHandles)
         delete(mask.maskLayerHandles(1));
         delete(mask.maskLayerHandles(2));
         mask.maskLayerHandles = [];
+    end
+    
+    if ~isempty(mask.selectedMaskEllipseHandles)
+        delete(mask.selectedMaskEllipseHandles(1));
+        delete(mask.selectedMaskEllipseHandles(2));
+        mask.selectedMaskEllipseHandles = [];
     end
 
     if maskmode && mask.roiCount > 0 
