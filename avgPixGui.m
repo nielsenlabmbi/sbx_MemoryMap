@@ -99,7 +99,7 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     else
         handles.mask.maskImage = zeros(512,796); % hack;
     end
-    handles.mask = enableMaskMode(handles);
+    % masks are enabled after anatomy image is loaded
     
     handles.clickToMagnifyData = [4,0.08];
     handles.buttonDownOnAxis = false;
@@ -182,7 +182,7 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
         end
         
         % add masks, if available
-        enableMaskMode(handles);
+        handles.mask = enableMaskMode(handles);
     else
         handles.plotDetail.param1val = [];
         handles.plotDetail.anatomy = [];
@@ -416,9 +416,6 @@ function tbutton_maskmode_Callback(hObject, ~, handles)
         set(handles.tbutton_pixelSelect,'CData',handles.pixIcon);
         set(handles.tbutton_clickToMagnify,'CData',handles.ctmIcon);
         set(handles.tbutton_maskmode,'CData',handles.mmIcon_on);
-        set(handles.frame_analyzerPanelInvalidation,'visible','on');
-    else
-        set(handles.frame_analyzerPanelInvalidation,'visible','off');
     end
     handles.mask = enableMaskMode(handles);
     guidata(hObject, handles);
@@ -431,9 +428,6 @@ function tbutton_clickToMagnify_Callback(hObject, ~, handles)
         set(handles.tbutton_pixelSelect,'CData',handles.pixIcon);
         set(handles.tbutton_clickToMagnify,'CData',handles.ctmIcon_on);
         set(handles.tbutton_maskmode,'CData',handles.mmIcon);
-        
-        % hack. Analyzer manipulation is not allowed while in mask mode.
-        set(handles.frame_analyzerPanelInvalidation,'visible','off');
     end
     handles.mask = enableMaskMode(handles);
     guidata(hObject, handles);
@@ -446,9 +440,6 @@ function tbutton_pixelSelect_Callback(hObject, ~, handles)
         set(handles.tbutton_pixelSelect,'CData',handles.pixIcon_on);
         set(handles.tbutton_clickToMagnify,'CData',handles.ctmIcon);
         set(handles.tbutton_maskmode,'CData',handles.mmIcon);
-        
-        % hack. Analyzer manipulation is not allowed while in mask mode.
-        set(handles.frame_analyzerPanelInvalidation,'visible','off');
     end
     handles.mask = enableMaskMode(handles);
     guidata(hObject, handles);
@@ -495,7 +486,6 @@ function button_adjustTimeWindows_Callback(hObject, ~, handles)
     guidata(hObject, handles);
 
 function slider_filterPx_Callback(hObject, ~, handles)
-round(get(hObject,'Value'))
     handles.plotDetail.filterPx = round(get(hObject,'Value'));
     set(handles.slider_filterPx,'value',handles.plotDetail.filterPx);
     
@@ -553,7 +543,7 @@ function button_mask_add_Callback(hObject, ~, handles)
     handles.mask = addNewMaskToStruct(handles.mask,newMask);
     
     % update views - this returns handles to the mask layers
-    handles.mask = updateMaskLayer(handles.mask,handles.maskmode,handles.axis_image,handles.axis_anatomy);
+    handles.mask = updateMaskLayer(handles.mask,handles.maskmode,handles.axis_image,handles.axis_anatomy,handles.plotDetail.anatomy);
     
     guidata(hObject, handles);
 
@@ -567,10 +557,11 @@ function button_mask_remove_Callback(hObject, ~, handles)
             delete(handles.mask.selectedMaskEllipseHandles(1));
             delete(handles.mask.selectedMaskEllipseHandles(2));
             handles.mask.selectedMaskEllipseHandles = [];
+            handles.mask.selectedMaskNum = 0;
         end
         
         % update views - this returns handles to the mask layers
-        handles.mask = updateMaskLayer(handles.mask,handles.maskmode,handles.axis_image,handles.axis_anatomy);
+        handles.mask = updateMaskLayer(handles.mask,handles.maskmode,handles.axis_image,handles.axis_anatomy,handles.plotDetail.anatomy);
         
         guidata(hObject, handles);
     end
@@ -598,7 +589,7 @@ function button_mask_modify_Callback(hObject, ~, handles)
         handles.mask = modifyMaskInStruct(handles.mask,modifiedMask);
 
         % update views - this returns handles to the mask layers
-        handles.mask = updateMaskLayer(handles.mask,handles.maskmode,handles.axis_image,handles.axis_anatomy);
+        handles.mask = updateMaskLayer(handles.mask,handles.maskmode,handles.axis_image,handles.axis_anatomy,handles.plotDetail.anatomy);
 
         guidata(hObject, handles);
     end
@@ -661,11 +652,12 @@ function button_maskGroup_load_Callback(hObject, ~, handles)
                     end
                 end
             end
-            mask.selectedMaskEllipseHandles = [];
+            handles.mask.selectedMaskEllipseHandles = [];
+            handles.mask.selectedMaskNum = 0;
         end
         handles.mask = mask;
         % update views - this returns handles to the mask layers
-        handles.mask = updateMaskLayer(handles.mask,handles.maskmode,handles.axis_image,handles.axis_anatomy);
+        handles.mask = updateMaskLayer(handles.mask,handles.maskmode,handles.axis_image,handles.axis_anatomy,handles.plotDetail.anatomy);
         guidata(hObject, handles);
     end
         
@@ -761,7 +753,7 @@ function figure1_WindowButtonDownFcn(hObject, ~, handles)
         showFuncCrosshair = true;
     else
         handles.buttonDownOnAxis = false;
-        handles.selectedPixel = [];
+%         handles.selectedPixel = [];
         handleClickedOn = [];
     end
     
@@ -814,9 +806,13 @@ function figure1_WindowButtonDownFcn(hObject, ~, handles)
             end
             x = currentRoi.Centroid(1) - round(w/2);
             y = currentRoi.Centroid(2) - round(h/2);
-            if ~isempty(handles.mask.selectedMaskEllipseHandles)
-                delete(handles.mask.selectedMaskEllipseHandles(1));
-                delete(handles.mask.selectedMaskEllipseHandles(2));
+            try
+                if ~isempty(handles.mask.selectedMaskEllipseHandles)
+                    delete(handles.mask.selectedMaskEllipseHandles(1));
+                    delete(handles.mask.selectedMaskEllipseHandles(2));
+                    handles.mask.selectedMaskEllipseHandles = [];
+                end
+            catch
                 handles.mask.selectedMaskEllipseHandles = [];
             end
             handles.mask.selectedMaskEllipseHandles(1) = ...
@@ -1014,8 +1010,6 @@ function slider_filterPx_CreateFcn(hObject, ~, ~)
     if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
         set(hObject,'BackgroundColor',[.9 .9 .9]);
     end
-
-function frame_analyzerPanelInvalidation_CreateFcn(~, ~, ~)
     
 function listbox_messages_CreateFcn(hObject, ~, ~)
     if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
@@ -1201,7 +1195,7 @@ function mask = enableMaskMode(handles)
     set(handles.button_maskGroup_move,'enable',enabledStr);
     set(handles.button_maskGroup_save,'enable',enabledStr);
     
-    mask = updateMaskLayer(handles.mask,handles.maskmode,handles.axis_image,handles.axis_anatomy);
+    mask = updateMaskLayer(handles.mask,handles.maskmode,handles.axis_image,handles.axis_anatomy,handles.plotDetail.anatomy);
     
 function maskStruct = addNewMaskToStruct(maskStruct,newMask)
     % first mask ever?
@@ -1254,13 +1248,36 @@ function maskStruct = modifyMaskInStruct(maskStruct,modifiedMask)
     % add new mask to the big mask
     maskStruct.maskImage(maskStats.PixelIdxList) = maskStruct.selectedMaskNum;
     
-function mask = updateMaskLayer(mask,maskmode,hFunc,hAnat)
+function mask = updateMaskLayer(mask,maskmode,hFunc,hAnat,anatomyImage)
     if ~isempty(mask.maskLayerHandles)
         try
             delete(mask.maskLayerHandles(1));
             delete(mask.maskLayerHandles(2));
             mask.maskLayerHandles = [];
         catch
+            anatChi = get(hAnat,'children');
+            if length(anatChi) > 1
+                for c=1:length(anatChi); delete(anatChi(c)); end
+                
+                % refresh the anatomy image
+                cla(hAnat);
+                imagesc(anatomyImage,'parent',hAnat);
+                colormap(hAnat,'gray'); 
+                set(hAnat,'xtick',[],'ytick',[]);
+                box(hAnat,'on');
+            end 
+            funcChi = get(hFunc,'children');
+            if length(funcChi) > 1
+                disp('Something might be wrong. The functional image has more children than expected.')
+                % hack: alpha data mapping for masks is direct.
+                % delete all those children. don't delete the functional
+                % map to avoid replotting that
+                for c=1:length(funcChi)
+                    if isa(funcChi(c),'matlab.graphics.primitive.Image') && strcmp(get(funcChi(c),'alphaDatamapping'),'direct')
+                        delete(funcChi(c));
+                    end
+                end
+            end
         end
     end
     
@@ -1273,17 +1290,32 @@ function mask = updateMaskLayer(mask,maskmode,hFunc,hAnat)
             % TODO: figure out when handles is not updating after mask
             % modification. this hack will not be needed after that is
             % fixed.
-            fChi = get(hFunc,'children');
-            for c=1:length(fChi)
-                if isa(fChi(c),'matlab.graphics.primitive.Rectangle')
-                    delete(fChi(c));
+            funcChi = get(hFunc,'children');
+            for c=1:length(funcChi)
+                if isa(funcChi(c),'matlab.graphics.primitive.Rectangle')
+                    delete(funcChi(c));
                 end
             end
-            fChi = get(hAnat,'children');
-            for c=1:length(fChi)
-                if isa(fChi(c),'matlab.graphics.primitive.Rectangle')
-                    delete(fChi(c));
+            if length(funcChi) > 1
+                disp('Something might be wrong. The functional image has more children than expected.')
+                % hack: alpha data mapping for masks is direct.
+                % delete all those children. don't delete the functional
+                % map to avoid replotting that
+                for c=1:length(funcChi)
+                    if isa(funcChi(c),'matlab.graphics.primitive.Image') && strcmp(get(funcChi(c),'alphaDatamapping'),'direct')
+                        delete(funcChi(c));
+                    end
                 end
+            end
+            
+            anatChi = get(hAnat,'children');
+            for c=1:length(anatChi)
+                if isa(anatChi(c),'matlab.graphics.primitive.Rectangle')
+                    delete(anatChi(c));
+                end
+            end
+            if length(anatChi) > 1
+                disp('Something might be wrong. The anatomy image has more children than expected.')
             end
         end
         mask.selectedMaskEllipseHandles = [];
