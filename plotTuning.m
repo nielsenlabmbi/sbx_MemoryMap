@@ -92,6 +92,15 @@ function plotTuning(selectedPixel,trialResp,plotDetail,trialDetail,imagingDetail
     respOnTime = stimOnTime + timeWindows.respRange(1);
     respOffTime = stimOffTime + timeWindows.respRange(2);
     plotYlims = get(axis_tc,'ylim');
+
+    if plotYlims(1) > min([cellfun(@min,bestTc) cellfun(@min,wrstTc)])
+        plotYlims(1) = min([cellfun(@min,bestTc) cellfun(@min,wrstTc)]);
+    end
+    
+    if plotYlims(2) < max([cellfun(@max,bestTc) cellfun(@max,wrstTc)])
+        plotYlims(2) = max([cellfun(@max,bestTc) cellfun(@max,wrstTc)]);
+    end
+    
     line([stimOnTime stimOnTime],plotYlims,'linewidth',2,'parent',axis_tc)
     line([stimOffTime stimOffTime],plotYlims,'linewidth',2,'parent',axis_tc)
     fill([respOnTime respOnTime respOffTime respOffTime],[plotYlims(1) plotYlims(2) plotYlims(2) plotYlims(1)],[0.7 0.7 0.7],'parent',axis_tc,'facealpha',0.3,'linestyle','none');

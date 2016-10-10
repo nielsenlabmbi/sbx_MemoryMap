@@ -48,6 +48,17 @@ function plotTimecoursePerCondition(currentPixel,selectedCondition,plotDetail,tr
         plot(axis_tc,t,tc{ii},'k','linewidth',1);
     end
     
+    plotYlims = get(axis_tc,'ylim');
+    
+    if plotYlims(1) > min(cellfun(@min,tc))
+        plotYlims(1) = min(cellfun(@min,tc));
+    end
+    
+    if plotYlims(2) < max(cellfun(@max,tc))
+        plotYlims(2) = max(cellfun(@max,tc));
+    end
+    
+    set(axis_tc,'ylim',plotYlims);
 	hold(axis_tc,'off')
 end
 
