@@ -721,7 +721,34 @@ function button_maskGroup_load_Callback(hObject, ~, handles)
     end
         
 function button_maskGroup_move_Callback(hObject, ~, handles)
+    if handles.mask.selectedMaskNum > 0
+        % create temporary mask on top of selected mask
+        imSize = handles.imagingDetail.imageSize;
+        idxList = handles.mask.roiList(handles.mask.selectedMaskNum).PixelIdxList;
+        [X,Y] = ind2sub(imSize,idxList);
+        h = imellipse(gca,[min(Y) min(X) max(Y)-min(Y) max(X)-min(X)]); wait(h);
 
+        % hack to get first image in the children of the handle because create
+        % mask gets confused when there are multiple images in the ancestors of
+        % the ellipse
+        for c=1:length(handles.axis_anatomy.Children)
+            if isa(handles.axis_anatomy.Children(c),'matlab.graphics.primitive.Image')
+                break;
+            end
+        end
+        modifiedMask = createMask(h,handles.axis_anatomy.Children(c));
+        delete(h);
+
+        % move all the masks to the new location. use selected mask as the
+        % reference and the modified mask as the final position
+        handles.mask = moveAllMasks(handles.mask,modifiedMask);
+
+        % update views - this returns handles to the mask layers
+        handles.mask = updateMaskLayer(handles.mask,handles.maskmode,handles.axis_image,handles.axis_anatomy,handles.plotDetail.anatomy);
+
+        guidata(hObject, handles);
+    end
+    
 function button_maskGroup_save_Callback(~, ~, handles)
     if handles.mask.roiCount < 1
         msgbox('No masks selected.','Nothing to save','error');
@@ -1103,7 +1130,7 @@ function figure1_KeyPressFcn(hObject, ~, handles)
     if handles.clickToMagnify
         H = get(hObject,'UserData');
         if ~isempty(H)
-            f1 = H(1); a1 = H(2); a2 = H(3);
+            f1 = H(1); a2 = H(3);
             if (strcmp(get(f1,'CurrentCharacter'),'+') || strcmp(get(f1,'CurrentCharacter'),'='))
                 handles.clickToMagnifyData(1) = handles.clickToMagnifyData(1)*1.2;
             elseif (strcmp(get(f1,'CurrentCharacter'),'-') || strcmp(get(f1,'CurrentCharacter'),'_'))
@@ -1317,6 +1344,7 @@ function maskStruct = addNewMaskToStruct(maskStruct,newMask)
     maskStruct.roiList(maskStruct.roiCount).MinorAxisLength = maskStats.MinorAxisLength;
     maskStruct.roiList(maskStruct.roiCount).Orientation     = maskStats.Orientation;
     maskStruct.roiList(maskStruct.roiCount).PixelIdxList    = maskStats.PixelIdxList;
+    maskStruct.roiList(maskStruct.roiCount).Mask            = newMask;
     
     % add new mask to the big mask
     maskStruct.maskImage = maskStruct.maskImage + maskStruct.roiCount*newMask;
@@ -1350,9 +1378,37 @@ function maskStruct = modifyMaskInStruct(maskStruct,modifiedMask)
     maskStruct.roiList(maskStruct.selectedMaskNum).MinorAxisLength = maskStats.MinorAxisLength;
     maskStruct.roiList(maskStruct.selectedMaskNum).Orientation     = maskStats.Orientation;
     maskStruct.roiList(maskStruct.selectedMaskNum).PixelIdxList    = maskStats.PixelIdxList;
+    maskStruct.roiList(maskStruct.selectedMaskNum).Mask            = modifiedMask;
     
     % add new mask to the big mask
     maskStruct.maskImage(maskStats.PixelIdxList) = maskStruct.selectedMaskNum;
+    
+function maskStruct = moveAllMasks(maskStruct,modifiedMask)
+    % get old mask version from mask image
+    oldCenter = maskStruct.roiList(maskStruct.selectedMaskNum).Centroid;
+    
+    % get centroid for modified mask
+    maskStats = regionprops(modifiedMask,'Centroid');
+    newCenter = maskStats.Centroid;
+    
+    % calculate translation
+    translation = newCenter - oldCenter;
+    
+    maskStruct.maskImage = zeros(size(maskStruct.maskImage));
+    for maskCounter=1:maskStruct.roiCount
+        % translate the centroid. ori, radii etc. don't need to change.
+        maskStruct.roiList(maskCounter).Centroid = maskStruct.roiList(maskCounter).Centroid + translation;
+        
+        % translate the individual mask
+        maskStruct.roiList(maskCounter).Mask = circshift(maskStruct.roiList(maskCounter).Mask,round(fliplr(translation)));
+        
+        % get the pixel list for the individual mask and add to the structure
+        maskStats = regionprops(maskStruct.roiList(maskCounter).Mask,'PixelIdxList');
+        maskStruct.roiList(maskCounter).PixelIdxList = maskStats.PixelIdxList;
+        
+        % update the overall mask image
+        maskStruct.maskImage = maskStruct.maskImage + maskStruct.roiList(maskCounter).Mask * maskCounter;
+    end
     
 function mask = updateMaskLayer(mask,maskmode,hFunc,hAnat,anatomyImage)
     if ~isempty(mask.maskLayerHandles)
