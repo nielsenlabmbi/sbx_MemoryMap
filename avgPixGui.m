@@ -38,6 +38,10 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     handles.pixelmode = true;
     handles.plotDetail.showAnatomy = true;
     
+    % messages counter and list
+    handles.messages.messageList = {};
+    handles.messages.count = 0;
+    
     % have the details in handles for easy access
     % note: pixelTc is still global
     handles.analyzer = Analyzer;
@@ -48,11 +52,20 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     if ~isempty(handles.analyzer)
         handles.trialDetail = getTrialDetail(handles.analyzer);
         handles.dataLoaded = true;
+        handles.messages = addMessage(handles.messages,'Data loaded.');
+        handles.messages = addMessage(handles.messages,['Total trials: ' num2str(handles.trialDetail.nTrial)]);
+        handles.messages = addMessage(handles.messages,['Repeats: ' num2str(handles.trialDetail.nRepeat)]);
+        handles.messages = addMessage(handles.messages,['Blanks: ' num2str(handles.trialDetail.nRepeatBlank)]);
+        set(handles.listbox_messages,'String',handles.messages.messageList);
+        set(handles.listbox_messages,'Value',handles.messages.count);
     else
         handles.trialDetail = [];
         handles.trialDetail.isMultipleDomain = 0;
         handles.trialDetail.domains{1} = '';
         handles.dataLoaded = false;
+        handles.messages = addMessage(handles.messages,'Data not loaded.');
+        set(handles.listbox_messages,'String',handles.messages.messageList);
+        set(handles.listbox_messages,'Value',handles.messages.count);
     end
     
     % gui changes -> button icons
@@ -104,7 +117,7 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     handles.clickToMagnifyData = [4,0.08];
     handles.buttonDownOnAxis = false;
     
-    handles.plotDetail.filterPx = 10;
+    handles.plotDetail.filterPx = 4;
     set(handles.slider_filterPx,'value',handles.plotDetail.filterPx);
     
     % gui changes -> analyzer manipulation
@@ -137,6 +150,10 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
         handles.plotDetail.param2mode = 'mean';
         
         set(handles.pulldown_param2Value,'enable','off');
+        
+        handles.messages = addMessage(handles.messages,['Multiple variables: ' handles.trialDetail.domains{1} ', ' handles.trialDetail.domains{2} '.']);
+        set(handles.listbox_messages,'String',handles.messages.messageList);
+        set(handles.listbox_messages,'Value',handles.messages.count);
     else
         set(handles.pulldown_param2,'enable','off');
         set(handles.pulldown_param2Value,'enable','off');
@@ -147,11 +164,19 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
         handles.plotDetail.param2name = [];
         handles.plotDetail.param2val = [];
         handles.plotDetail.param2mode = [];
+        handles.messages = addMessage(handles.messages,['Single variable: ' handles.trialDetail.domains{1} '.']);
+        set(handles.listbox_messages,'String',handles.messages.messageList);
+        set(handles.listbox_messages,'Value',handles.messages.count);
     end
     
     % get time windows depending upon how many frames were collected
     if ~isempty(handles.imagingDetail)
         handles.timeWindows = getTimeWindows(handles.imagingDetail);
+        
+        handles.messages = addMessage(handles.messages,['Baseline time (ms): ' num2str(round(handles.timeWindows.baselineRange(1))) ' to ' num2str(round(handles.timeWindows.baselineRange(2)))]);
+        handles.messages = addMessage(handles.messages,['Response time (ms): ' num2str(round(handles.timeWindows.respRange(1))) ' to ' num2str(round(handles.timeWindows.respRange(2)))]);
+        set(handles.listbox_messages,'String',handles.messages.messageList);
+        set(handles.listbox_messages,'Value',handles.messages.count);
     else
         handles.timeWindows = [];
         handles.imagingDetail.imageSize = [512 796]; 
@@ -160,6 +185,10 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
     
     % get tuning for all pixels
     if ~isempty(handles.timeWindows)
+        handles.messages = addMessage(handles.messages,'Calculating pixel tuning.');
+        set(handles.listbox_messages,'String',handles.messages.messageList);
+        set(handles.listbox_messages,'Value',handles.messages.count);
+        
         [handles.pixelTuning,handles.trialResp] = getPixelTuning...
             (handles.trialDetail,handles.timeWindows,...
             handles.plotDetail.filterPx,handles.imagingDetail.imageSize);
@@ -236,6 +265,10 @@ function uipushtool_open_ClickedCallback(hObject, ~, handles)
     answer = inputdlg(prompt,dlg_title,num_lines,defaultans);
     if isempty(answer); return; end
     
+    handles.messages = addMessage(handles.messages,['Loading data for ' answer{1} '_' answer{2} '_' answer{3}]);
+    set(handles.listbox_messages,'String',handles.messages.messageList);
+    set(handles.listbox_messages,'Value',handles.messages.count);
+    
     exptDetail.animal = answer{1};
     exptDetail.unit = answer{2};
     exptDetail.expt = answer{3};
@@ -246,10 +279,13 @@ function uipushtool_open_ClickedCallback(hObject, ~, handles)
     handles = loadDataAndRefreshGui(handles);   
     guidata(hObject, handles);
     
-function uipushtool_save_ClickedCallback(~, ~, handles)
+function uipushtool_save_ClickedCallback(hObject, ~, handles)
     global pixelTc;
     if ~handles.dataLoaded
         msgbox('No data loaded.','Nothing to save','error');
+        handles.messages = addMessage(handles.messages,'Cannot save data. No data loaded.');
+        set(handles.listbox_messages,'String',handles.messages.messageList);
+        set(handles.listbox_messages,'Value',handles.messages.count);
     else
         savePathC = ['C:\2pdata\' handles.exptDetail.animal '\' ...
             handles.exptDetail.animal '_' handles.exptDetail.unit '_' ...
@@ -284,7 +320,11 @@ function uipushtool_save_ClickedCallback(~, ~, handles)
         save(savePathZ,'saveData','-v7.3');
         delete(h);
         msgbox('Data saved.','Save Data','none');
+        handles.messages = addMessage(handles.messages,['Data saved (in c:\ and z:\) for ' handles.exptDetail.animal '_' handles.exptDetail.unit '_' handles.exptDetail.expt]);
+        set(handles.listbox_messages,'String',handles.messages.messageList);
+        set(handles.listbox_messages,'Value',handles.messages.count);
     end
+    guidata(hObject, handles);
 
 % =========================================================================
 % ======================= TOOLBAR CALLBACKS DONE ==========================
@@ -491,6 +531,10 @@ function slider_filterPx_Callback(hObject, ~, handles)
     
     % get tuning for all pixels
     if ~isempty(handles.timeWindows)
+        handles.messages = addMessage(handles.messages,'Calculating pixel tuning.');
+        set(handles.listbox_messages,'String',handles.messages.messageList);
+        set(handles.listbox_messages,'Value',handles.messages.count);
+        
         [handles.pixelTuning,handles.trialResp] = getPixelTuning...
             (handles.trialDetail,handles.timeWindows,...
             handles.plotDetail.filterPx,handles.imagingDetail.imageSize);
@@ -542,6 +586,10 @@ function button_mask_add_Callback(hObject, ~, handles)
     % add new mask to the overall struct; also select that mask
     handles.mask = addNewMaskToStruct(handles.mask,newMask);
     
+    handles.messages = addMessage(handles.messages,['Mask added. Number of masks: ' num2str(handles.mask.roiCount)]);
+    set(handles.listbox_messages,'String',handles.messages.messageList);
+    set(handles.listbox_messages,'Value',handles.messages.count);
+    
     % update views - this returns handles to the mask layers
     handles.mask = updateMaskLayer(handles.mask,handles.maskmode,handles.axis_image,handles.axis_anatomy,handles.plotDetail.anatomy);
     
@@ -559,6 +607,10 @@ function button_mask_remove_Callback(hObject, ~, handles)
             handles.mask.selectedMaskEllipseHandles = [];
             handles.mask.selectedMaskNum = 0;
         end
+        
+        handles.messages = addMessage(handles.messages,['Mask removed. Number of masks: ' num2str(handles.mask.roiCount)]);
+        set(handles.listbox_messages,'String',handles.messages.messageList);
+        set(handles.listbox_messages,'Value',handles.messages.count);
         
         % update views - this returns handles to the mask layers
         handles.mask = updateMaskLayer(handles.mask,handles.maskmode,handles.axis_image,handles.axis_anatomy,handles.plotDetail.anatomy);
@@ -656,6 +708,11 @@ function button_maskGroup_load_Callback(hObject, ~, handles)
             handles.mask.selectedMaskNum = 0;
         end
         handles.mask = mask;
+        
+        handles.messages = addMessage(handles.messages,['Masks loaded. Number of masks: ' num2str(handles.mask.roiCount)]);
+        set(handles.listbox_messages,'String',handles.messages.messageList);
+        set(handles.listbox_messages,'Value',handles.messages.count);
+        
         % update views - this returns handles to the mask layers
         handles.mask = updateMaskLayer(handles.mask,handles.maskmode,handles.axis_image,handles.axis_anatomy,handles.plotDetail.anatomy);
         guidata(hObject, handles);
@@ -681,11 +738,13 @@ function button_maskGroup_save_Callback(~, ~, handles)
         
         if ~exist(['C:\2pdata\' handles.exptDetail.animal],'dir'); mkdir(['C:\2pdata\' handles.exptDetail.animal]); end
         if ~exist(['Z:\2P\Ferret 2P\Ferret 2P data\' handles.exptDetail.animal],'dir'); mkdir(['Z:\2P\Ferret 2P\Ferret 2P data\' handles.exptDetail.animal]); end
-        h = msgbox('Saving data...','Save Data','none');
         save(savePathC,'mask');
         save(savePathZ,'mask');
         delete(h);
-        msgbox('Masks saved.','Save Data','none');
+        
+        handles.messages = addMessage(handles.messages,'Masks saved (in c:\ and z:\).');
+        set(handles.listbox_messages,'String',handles.messages.messageList);
+        set(handles.listbox_messages,'Value',handles.messages.count);
     end
 
 % =========================================================================
@@ -791,6 +850,7 @@ function figure1_WindowButtonDownFcn(hObject, ~, handles)
             hold(handles.axis_image,'off');
             handles.funcPointHandle = hPoint;
         end
+        
     % handle mask selection
     elseif handles.maskmode && handles.buttonDownOnAxis
         handles.mask.selectedMaskNum = handles.mask.maskImage(handles.selectedPixel(1),handles.selectedPixel(2));
@@ -822,10 +882,14 @@ function figure1_WindowButtonDownFcn(hObject, ~, handles)
                 rectangle('Position',[x y w h],'Curvature',[1 1],'EdgeColor','magenta',...
                 'linewidth',2,'parent',handles.axis_anatomy);
             
+            handles.messages = addMessage(handles.messages,['Mask number ' num2str(handles.mask.selectedMaskNum) ' selected.']);
+            set(handles.listbox_messages,'String',handles.messages.messageList);
+            set(handles.listbox_messages,'Value',handles.messages.count);
+            
             % plot tuning for that mask
             plotTuning_mask(currentRoi.PixelIdxList,handles.trialResp,handles.plotDetail,...
-            handles.trialDetail,handles.imagingDetail,handles.timeWindows,...
-            handles.axis_tc,handles.axis_tuning);
+                handles.trialDetail,handles.imagingDetail,handles.timeWindows,...
+                handles.axis_tc,handles.axis_tuning);
         end
     end
     
@@ -842,8 +906,16 @@ function figure1_WindowButtonDownFcn(hObject, ~, handles)
                 handles.mask.selectedMaskNum = handles.mask.maskImage(handles.selectedPixel(1),handles.selectedPixel(2));
                 currentRoi = handles.mask.roiList(handles.mask.selectedMaskNum);
                 plotTimecoursePerCondition_mask(currentRoi.PixelIdxList,selectedCondInd,handles.plotDetail,handles.trialDetail,handles.imagingDetail,handles.timeWindows,handles.axis_tc);
+                
+                handles.messages = addMessage(handles.messages,['Timecourse for mask number ' num2str(handles.mask.selectedMaskNum) ' for ' handles.plotDetail.param1name ' = ' num2str(handles.trialDetail.domval(selectedCondInd)) '.']);
+                set(handles.listbox_messages,'String',handles.messages.messageList);
+                set(handles.listbox_messages,'Value',handles.messages.count);
             elseif handles.pixelmode
                 plotTimecoursePerCondition(handles.selectedPixel,selectedCondInd,handles.plotDetail,handles.trialDetail,handles.imagingDetail,handles.timeWindows,handles.axis_tc);
+                
+                handles.messages = addMessage(handles.messages,['Timecourse for ' handles.plotDetail.param1name ' = ' num2str(handles.trialDetail.domval(selectedCondInd)) '.']);
+                set(handles.listbox_messages,'String',handles.messages.messageList);
+                set(handles.listbox_messages,'Value',handles.messages.count);
             end
         end
     end
@@ -1078,6 +1150,9 @@ function handles = loadDataAndRefreshGui(handles,maxBaselineFrames,maxPostFrames
 
     if ~getPixelTcFromSbx(maxBaselineFrames,maxPostFrames)
         msgbox('File does not exist or trials don''t match.','Error','error');
+        handles.messages = addMessage(handles.messages,'File does not exist or trials don''t match.');
+        set(handles.listbox_messages,'String',handles.messages.messageList);
+        set(handles.listbox_messages,'Value',handles.messages.count);
         return;
     end
     % ==================
@@ -1086,7 +1161,10 @@ function handles = loadDataAndRefreshGui(handles,maxBaselineFrames,maxPostFrames
     % need to check for empty frames.
     global isDffCalculated
     if sum(squeeze(pixelTc{1}(1,1,:) == 0))
-        disp('Removing empty frames. This may take a minute...');
+        handles.messages = addMessage(handles.messages,'Removing empty frames. This may take a minute...');
+        set(handles.listbox_messages,'String',handles.messages.messageList);
+        set(handles.listbox_messages,'Value',handles.messages.count);
+        
         for t=1:length(pixelTc)
             % hack to remove empty frames
             ind = squeeze(pixelTc{t}(1,1,:) == 0);
@@ -1105,6 +1183,13 @@ function handles = loadDataAndRefreshGui(handles,maxBaselineFrames,maxPostFrames
     handles.exptDetail = exptDetail;
     handles.imagingDetail = imagingDetail;
     handles.trialDetail = getTrialDetail(handles.analyzer);
+        handles.messages = addMessage(handles.messages,'Data loaded.');
+        handles.messages = addMessage(handles.messages,['Total trials: ' num2str(handles.trialDetail.nTrial)]);
+        handles.messages = addMessage(handles.messages,['Repeats: ' num2str(handles.trialDetail.nRepeat)]);
+        handles.messages = addMessage(handles.messages,['Blanks: ' num2str(handles.trialDetail.nRepeatBlank)]);
+        set(handles.listbox_messages,'String',handles.messages.messageList);
+        set(handles.listbox_messages,'Value',handles.messages.count);
+        
     handles.dataLoaded = true;
     handles.clickToMagnifyData = [4,0.08];
     set(handles.pulldown_param1,'String',handles.trialDetail.domains);
@@ -1139,6 +1224,10 @@ function handles = loadDataAndRefreshGui(handles,maxBaselineFrames,maxPostFrames
         set(handles.radiobutton_mean,'enable','on');
         set(handles.radiobutton_all,'enable','on');
         set(handles.radiobutton_value,'enable','on');
+        
+        handles.messages = addMessage(handles.messages,['Multiple variables: ' handles.trialDetail.domains{1} ', ' handles.trialDetail.domains{2} '.']);
+        set(handles.listbox_messages,'String',handles.messages.messageList);
+        set(handles.listbox_messages,'Value',handles.messages.count);
     else
         set(handles.pulldown_param2,'enable','off');
         set(handles.pulldown_param2Value,'enable','off');
@@ -1149,6 +1238,10 @@ function handles = loadDataAndRefreshGui(handles,maxBaselineFrames,maxPostFrames
         handles.plotDetail.param2name = [];
         handles.plotDetail.param2val = [];
         handles.plotDetail.param2mode = [];
+        
+        handles.messages = addMessage(handles.messages,['Single variable: ' handles.trialDetail.domains{1} '.']);
+        set(handles.listbox_messages,'String',handles.messages.messageList);
+        set(handles.listbox_messages,'Value',handles.messages.count);
     end
     handles.mask.roiCount = 0;
     handles.mask.maskLayerHandles = [];
@@ -1164,6 +1257,16 @@ function handles = loadDataAndRefreshGui(handles,maxBaselineFrames,maxPostFrames
 
 function handles = updateTimeWindowsAndReplot(handles,respFrames)
     handles.timeWindows = getTimeWindows(handles.imagingDetail,respFrames);
+    
+    handles.messages = addMessage(handles.messages,['Baseline time (ms): ' num2str(round(handles.timeWindows.baselineRange(1))) ' to ' num2str(round(handles.timeWindows.baselineRange(2)))]);
+    handles.messages = addMessage(handles.messages,['Response time (ms): ' num2str(round(handles.timeWindows.respRange(1))) ' to ' num2str(round(handles.timeWindows.respRange(2)))]);
+    set(handles.listbox_messages,'String',handles.messages.messageList);
+    set(handles.listbox_messages,'Value',handles.messages.count);
+    
+    handles.messages = addMessage(handles.messages,'Calculating pixel tuning.');
+    set(handles.listbox_messages,'String',handles.messages.messageList);
+    set(handles.listbox_messages,'Value',handles.messages.count);
+    
     [handles.pixelTuning,handles.trialResp] = getPixelTuning...
         (handles.trialDetail,handles.timeWindows,...
         handles.plotDetail.filterPx,handles.imagingDetail.imageSize);
@@ -1335,6 +1438,10 @@ function mask = updateMaskLayer(mask,maskmode,hFunc,hAnat,anatomyImage)
         hold(hAnat,'off')
     end
 
+function messages = addMessage(messages,msg)
+    messages.count = messages.count + 1;
+    messages.messageList{messages.count} = msg;
+    
 % =========================================================================
 % ======================= HELPER FUNCTIONS DONE ===========================
 % =========================================================================
