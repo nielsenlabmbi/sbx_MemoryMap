@@ -13,6 +13,12 @@ function success  = getPixelTcFromSbx(maxBaselineFrames,maxPostFrames)
     end
     load(sbxPath); % load info file
     
+    % load align file
+    alignStruct = [];
+    if exist([sbxPath '.align'],'file'); 
+        alignStruct = load([sbxPath '.align'],'-mat');
+    end
+    
     sampleFrame = sbxread(sbxPath,0,1);
     imagingDetail.lines = info.config.lines; % ideally one should get these from sbx
     imagingDetail.pixels = size(sampleFrame,size(size(sampleFrame),2)); 
@@ -53,16 +59,34 @@ function success  = getPixelTcFromSbx(maxBaselineFrames,maxPostFrames)
                 imagingDetail.maxBaselineFrames+(stimOffFrame-stimOnFrame)...
                 imagingDetail.maxBaselineFrames+(stimOffFrame-stimOnFrame)+imagingDetail.maxPostFrames];
             
+            % baseline
             framesRead = sbxread(sbxPath,baselineFrameStart,imagingDetail.maxBaselineFrames);
-            pixelTc{t}(:,:,epochs(1):epochs(2)) = double(squeeze(framesRead(1,:,:,:)));
+            framesRead = double(squeeze(framesRead(1,:,:,:)));
+            if ~isempty(alignStruct); framesRead = alignFrames(framesRead,alignStruct.T(baselineFrameStart:baselineFrameStart+imagingDetail.maxBaselineFrames-1,:)); end
+            pixelTc{t}(:,:,epochs(1):epochs(2)) = framesRead;
+            
+            % stim
             framesRead = sbxread(sbxPath,stimOnFrame,stimOffFrame-stimOnFrame);
-            pixelTc{t}(:,:,epochs(2)+1:epochs(3)) = double(squeeze(framesRead(1,:,:,:)));
+            framesRead = double(squeeze(framesRead(1,:,:,:)));
+            if ~isempty(alignStruct); framesRead = alignFrames(framesRead,alignStruct.T(stimOnFrame:stimOffFrame-1,:)); end
+            pixelTc{t}(:,:,epochs(2)+1:epochs(3)) = framesRead;
+            
+            % post
             framesRead = sbxread(sbxPath,stimOffFrame,imagingDetail.maxPostFrames);
-            pixelTc{t}(:,:,epochs(3)+1:epochs(4)) = double(squeeze(framesRead(1,:,:,:)));     
+            framesRead = double(squeeze(framesRead(1,:,:,:)));
+            if ~isempty(alignStruct); framesRead = alignFrames(framesRead,alignStruct.T(stimOffFrame:stimOffFrame+imagingDetail.maxPostFrames-1,:)); end
+            pixelTc{t}(:,:,epochs(3)+1:epochs(4)) = framesRead;     
         end
         delete(hWaitbar);
     else
         disp('Something went wrong. TTL pulses don''t match up with nTrials.')
         success = false;
+    end
+end
+
+function alignedFrames = alignFrames(inputFrames,shift)
+    alignedFrames = nan(size(inputFrames));
+    for frameCount=1:size(inputFrames,3)
+        alignedFrames(:,:,frameCount) = circshift(squeeze(inputFrames(:,:,frameCount)),shift(frameCount,:));
     end
 end
