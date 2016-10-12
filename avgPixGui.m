@@ -164,9 +164,11 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
         handles.plotDetail.param2name = [];
         handles.plotDetail.param2val = [];
         handles.plotDetail.param2mode = [];
-        handles.messages = addMessage(handles.messages,['Single variable: ' handles.trialDetail.domains{1} '.']);
-        set(handles.listbox_messages,'String',handles.messages.messageList);
-        set(handles.listbox_messages,'Value',handles.messages.count);
+        if ~isempty(handles.trialDetail.domains{1})
+            handles.messages = addMessage(handles.messages,['Single variable: ' handles.trialDetail.domains{1} '.']);
+            set(handles.listbox_messages,'String',handles.messages.messageList);
+            set(handles.listbox_messages,'Value',handles.messages.count);
+        end
     end
     
     % get time windows depending upon how many frames were collected
@@ -740,7 +742,6 @@ function button_maskGroup_save_Callback(~, ~, handles)
         if ~exist(['Z:\2P\Ferret 2P\Ferret 2P data\' handles.exptDetail.animal],'dir'); mkdir(['Z:\2P\Ferret 2P\Ferret 2P data\' handles.exptDetail.animal]); end
         save(savePathC,'mask');
         save(savePathZ,'mask');
-        delete(h);
         
         handles.messages = addMessage(handles.messages,'Masks saved (in c:\ and z:\).');
         set(handles.listbox_messages,'String',handles.messages.messageList);
@@ -1082,6 +1083,8 @@ function slider_filterPx_CreateFcn(hObject, ~, ~)
     if isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
         set(hObject,'BackgroundColor',[.9 .9 .9]);
     end
+    
+function listbox_messages_Callback(~,~,~)
     
 function listbox_messages_CreateFcn(hObject, ~, ~)
     if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
@@ -1445,16 +1448,3 @@ function messages = addMessage(messages,msg)
 % =========================================================================
 % ======================= HELPER FUNCTIONS DONE ===========================
 % =========================================================================
-
-
-
-function listbox_messages_Callback(hObject, eventdata, handles)
-% hObject    handle to listbox_messages (see GCBO)
-% eventdata  reserved - to be defined in a future version of MATLAB
-% handles    structure with handles and user data (see GUIDATA)
-
-% Hints: contents = cellstr(get(hObject,'String')) returns listbox_messages contents as cell array
-%        contents{get(hObject,'Value')} returns selected item from listbox_messages
-
-
-
