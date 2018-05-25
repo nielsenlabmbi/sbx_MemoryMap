@@ -15,7 +15,7 @@ function [pixelTuning,trialResp] = getPixelTuning(trialDetail,timeWindows,filter
             f0 = repmat(f0,[1,1,size(pixelTc{t},3)]);
 
             % convert pixelTc to df/f
-            pixelTc{t} = (pixelTc{t} - f0)./f0;
+%             pixelTc{t} = (pixelTc{t} - f0)./f0;
         end
         waitbar(t/trialDetail.nTrial,hWaitbar,['Trial number ' num2str(t)])
         

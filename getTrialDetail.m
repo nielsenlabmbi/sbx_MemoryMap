@@ -1,7 +1,7 @@
 function trialDetail = getTrialDetail(Analyzer)
     trialDetail.trials = getcondtrial(Analyzer);
     [trialDetail.domains,trialDetail.domval,trialDetail.blankid] = getdomainvalue(Analyzer);
-    trialDetail.nTrial = getnotrials(Analyzer);
+    trialDetail.nTrial = length(trialDetail.trials); %  getnotrials(Analyzer);
     trialDetail.nRepeat = getnorepeats(1,Analyzer);
     
     if ~isempty(trialDetail.blankid)

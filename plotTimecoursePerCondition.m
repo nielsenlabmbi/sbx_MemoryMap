@@ -40,6 +40,7 @@ function plotTimecoursePerCondition(currentPixel,selectedCondition,plotDetail,tr
         end    
     end    
     
+    cla(axis_tc);
     hold(axis_tc,'on');
     
     tc = currPixelTc(cell2mat(pickTrials'));
@@ -58,7 +59,7 @@ function plotTimecoursePerCondition(currentPixel,selectedCondition,plotDetail,tr
         plotYlims(2) = max(cellfun(@max,tc));
     end
     
-    set(axis_tc,'ylim',plotYlims);
+%     set(axis_tc,'ylim',plotYlims);
 	hold(axis_tc,'off')
 end
 
