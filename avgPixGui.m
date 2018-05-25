@@ -140,6 +140,7 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
         set(handles.pulldown_param2,'String',handles.trialDetail.domains);
         set(handles.pulldown_param2,'Value',2);
         set(handles.pulldown_param2Value,'String',unique(handles.trialDetail.domval(:,2)),'value',1);
+        set(handles.pulldown_param2Value,'String',1:length(unique(handles.trialDetail.domval(:,2))),'value',1);
         
         set(handles.radiobutton_mean,'Value',1);
         set(handles.radiobutton_all,'Value',0);
@@ -148,8 +149,11 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
         handles.plotDetail.param2name = handles.trialDetail.domains{2};
         handles.plotDetail.param2val = handles.trialDetail.domval(1,2);
         handles.plotDetail.param2mode = 'mean';
+        handles.plotDetail.param2collapse = 1;
         
         set(handles.pulldown_param2Value,'enable','off');
+        set(handles.checkbox_collapseReps,'enable','off');
+        set(handles.pulldown_numRepsToCollapse,'enable','off');
         
         handles.messages = addMessage(handles.messages,['Multiple variables: ' handles.trialDetail.domains{1} ', ' handles.trialDetail.domains{2} '.']);
         set(handles.listbox_messages,'String',handles.messages.messageList);
@@ -160,10 +164,14 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
         set(handles.radiobutton_mean,'enable','off');
         set(handles.radiobutton_all,'enable','off');
         set(handles.radiobutton_value,'enable','off');
+        set(handles.checkbox_collapseReps,'enable','off');
+        set(handles.pulldown_numRepsToCollapse,'enable','off');
         
         handles.plotDetail.param2name = [];
         handles.plotDetail.param2val = [];
         handles.plotDetail.param2mode = [];
+        handles.plotDetail.param2collapse = [];
+        
         if ~isempty(handles.trialDetail.domains{1})
             handles.messages = addMessage(handles.messages,['Single variable: ' handles.trialDetail.domains{1} '.']);
             set(handles.listbox_messages,'String',handles.messages.messageList);
@@ -419,8 +427,13 @@ function radiobutton_value_Callback(hObject, ~, handles)
         handles.plotDetail.param2mode = 'value';
         handles.plotDetail.param2val = handles.trialDetail.domval(1,2);
         set(handles.pulldown_param2Value,'enable','on');
+        set(handles.checkbox_collapseReps,'enable','on');
+        set(handles.checkbox_collapseReps,'value',0);
+        set(handles.pulldown_numRepsToCollapse,'enable','off');
     else
         set(handles.pulldown_param2Value,'enable','off');
+        set(handles.checkbox_collapseReps,'enable','off');
+        set(handles.pulldown_numRepsToCollapse,'enable','off');
     end
     % get mean image
     if ~isempty(handles.pixelTuning)
@@ -433,6 +446,41 @@ function radiobutton_value_Callback(hObject, ~, handles)
 function pulldown_param2Value_Callback(hObject, ~, handles)
     contents = cellstr(get(hObject,'String'));
     handles.plotDetail.param2val = str2double(contents{get(hObject,'Value')});
+    
+    % get mean image
+    if ~isempty(handles.pixelTuning)
+        [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
+        handles.plotDetail.funcImage = plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
+        enableMaskMode(handles);
+    end
+    guidata(hObject, handles);
+    
+function checkbox_collapseReps_Callback(hObject, ~, handles)
+    if get(hObject,'Value')
+        handles.plotDetail.param2mode = 'value_slide';
+        set(handles.pulldown_numRepsToCollapse,'enable','on');
+        
+        contents = cellstr(get(handles.pulldown_numRepsToCollapse,'String'));
+        handles.plotDetail.param2collapse = str2double(contents{get(handles.pulldown_numRepsToCollapse,'Value')});
+    else
+        handles.plotDetail.param2mode = 'value';
+        handles.plotDetail.param2val = handles.trialDetail.domval(1,2);
+        set(handles.pulldown_param2Value,'enable','on');
+        set(handles.pulldown_numRepsToCollapse,'enable','off');
+    end
+    % get mean image
+    if ~isempty(handles.pixelTuning)
+        [handles.plotDetail.dispImage,handles.plotDetail.param1val] = getImage(handles.pixelTuning,handles.trialDetail,handles.plotDetail);
+        handles.plotDetail.funcImage = plotImage(handles.plotDetail.dispImage,handles.plotDetail,handles.axis_image);
+        enableMaskMode(handles);
+    end
+    guidata(hObject, handles);
+    
+function pulldown_numRepsToCollapse_Callback(hObject, ~, handles)
+    contents = cellstr(get(hObject,'String'));
+    handles.plotDetail.param2collapse = str2double(contents{get(hObject,'Value')});
+    
+    handles.plotDetail.param2mode = 'value_slide';
     
     % get mean image
     if ~isempty(handles.pixelTuning)
@@ -786,19 +834,19 @@ function button_maskGroup_save_Callback(~, ~, handles)
 % TODO: Either add context menu for each mask or add context menu for the
 %       axis but set enabled based on maskmode
 % TODO: Handle callbacks from mask context menu
-function contextMenu_mask_Callback(hObject, ~, handles)
+function contextMenu_mask_Callback(~, ~, ~)
 % hObject    handle to contextMenu_mask (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 % TODO: Handle callbacks from mask context menu
-function contextMenu_mask_modify_Callback(hObject, ~, handles)
+function contextMenu_mask_modify_Callback(~, ~, ~)
 % hObject    handle to contextMenu_mask_modify (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 % TODO: Handle callbacks from mask context menu
-function contextMenu_mask_remove_Callback(hObject, ~, handles)
+function contextMenu_mask_remove_Callback(~, ~, ~)
 % hObject    handle to contextMenu_mask_remove (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -1096,6 +1144,11 @@ function pulldown_param2Value_CreateFcn(hObject, ~, ~) %#ok<*DEFNU>
         set(hObject,'BackgroundColor','white');
     end
     
+function pulldown_numRepsToCollapse_CreateFcn(hObject, ~, ~) %#ok<*DEFNU>
+    if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+        set(hObject,'BackgroundColor','white');
+    end
+    
 function textbox_moduloValue_CreateFcn(hObject, ~, ~)
     if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
         set(hObject,'BackgroundColor','white');
@@ -1239,16 +1292,21 @@ function handles = loadDataAndRefreshGui(handles,maxBaselineFrames,maxPostFrames
         set(handles.pulldown_param2,'String',handles.trialDetail.domains);
         set(handles.pulldown_param2,'Value',2);
         set(handles.pulldown_param2Value,'String',unique(handles.trialDetail.domval(:,2)),'value',1);
+        set(handles.pulldown_numRepsToCollapse,'String',1:length(unique(handles.trialDetail.domval(:,2))),'value',1);
         
         set(handles.radiobutton_mean,'Value',1);
         set(handles.radiobutton_all,'Value',0);
+        set(handles.radiobutton_value,'Value',0);
         set(handles.radiobutton_value,'Value',0);
         
         handles.plotDetail.param2name = handles.trialDetail.domains{2};
         handles.plotDetail.param2val = handles.trialDetail.domval(1,2);
         handles.plotDetail.param2mode = 'mean';
+        handles.plotDetail.param2collapse = 1;
         
+        set(handles.checkbox_collapseReps,'enable','off');
         set(handles.pulldown_param2Value,'enable','off');
+        set(handles.pulldown_numRepsToCollapse,'enable','off');
         
         set(handles.pulldown_param2,'enable','on');
         set(handles.radiobutton_mean,'enable','on');
@@ -1268,6 +1326,7 @@ function handles = loadDataAndRefreshGui(handles,maxBaselineFrames,maxPostFrames
         handles.plotDetail.param2name = [];
         handles.plotDetail.param2val = [];
         handles.plotDetail.param2mode = [];
+        handles.plotDetail.param2collapse = [];
         
         handles.messages = addMessage(handles.messages,['Single variable: ' handles.trialDetail.domains{1} '.']);
         set(handles.listbox_messages,'String',handles.messages.messageList);
