@@ -140,7 +140,7 @@ function avgPixGui_OpeningFcn(hObject, ~, handles, varargin)
         set(handles.pulldown_param2,'String',handles.trialDetail.domains);
         set(handles.pulldown_param2,'Value',2);
         set(handles.pulldown_param2Value,'String',unique(handles.trialDetail.domval(:,2)),'value',1);
-        set(handles.pulldown_param2Value,'String',1:length(unique(handles.trialDetail.domval(:,2))),'value',1);
+        set(handles.pulldown_numRepsToCollapse,'String',1:length(unique(handles.trialDetail.domval(:,2))),'value',1);
         
         set(handles.radiobutton_mean,'Value',1);
         set(handles.radiobutton_all,'Value',0);
@@ -398,6 +398,8 @@ function radiobutton_mean_Callback(hObject, ~, handles)
     if get(hObject,'Value')
         handles.plotDetail.param2mode = 'mean';
         set(handles.pulldown_param2Value,'enable','off');
+        set(handles.checkbox_collapseReps,'enable','off');
+        set(handles.pulldown_numRepsToCollapse,'enable','off');
     end
     
     % get mean image
@@ -412,6 +414,8 @@ function radiobutton_all_Callback(hObject, ~, handles)
     if get(hObject,'Value')
         handles.plotDetail.param2mode = 'all';
         set(handles.pulldown_param2Value,'enable','off');
+        set(handles.checkbox_collapseReps,'enable','off');
+        set(handles.pulldown_numRepsToCollapse,'enable','off');
     end
     
     % get mean image

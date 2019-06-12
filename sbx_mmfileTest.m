@@ -5,7 +5,7 @@ end
 function startAcqMemMap()
     global imagingDetail pixelTc exptAborted
 
-    mmfilepath = 'C:\Users\nielsenlab\Documents\MATLAB\yeti\Scanbox_Yeti\mmap';
+    mmfilepath = 'C:\Users\nielsenlab\Documents\MATLAB\Scanbox_Yeti-master\mmap';
     mmfilename = 'scanbox.mmap';
     % specifying the path is unnecessary
     mmfile = memmapfile([mmfilepath '\' mmfilename],'Writable',true, ...
